@@ -42,4 +42,8 @@ Swarm separates the Logic (Lua), the Orchestration (Go Mainframe), and the Execu
    ./swarm
 
 ## License
-MIT - Feel free to use and expand.
+Copyright (c) 2026 whazzabii7. All rights reserved.
+
+This software is provided for personal use only. Redistribution, modification, 
+or creation of derivative works is strictly prohibited without prior 
+written permission from the author.
