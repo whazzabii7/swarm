@@ -19,36 +19,29 @@ func InitDB(dbPath string) {
 
 	// Tabellen-Schema
 	const schema = `
-	CREATE TABLE IF NOT EXISTS bots (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		alias TEXT UNIQUE,
-		path TEXT,
+	CREATE TABLE IF NOT EXISTS bot_blueprints (
+		alias TEXT PRIMARY KEY,
+		path TEXT NOT NULL,
 		type TEXT,
-		status TEXT,
-		meta TEXT,
-		last_check DATETIME DEFAULT CURRENT_TIMESTAMP
+		last_scan DATETIME
 	);
 
-	CREATE TABLE IF NOT EXISTS tasks (
+	CREATE TABLE IF NOT EXISTS bot_instances (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		alias TEXT,
+		pid INTEGER,
+		status TEXT,
+		last_seen DATETIME,
+		FOREIGN KEY(alias) REFERENCES bot_blueprints(alias)
+	);
+
+	CREATE TABLE IF NOT EXISTS task_ledger (
 		id TEXT PRIMARY KEY,
-		bot_alias TEXT,
+		target_bot TEXT,
 		payload TEXT,
 		status TEXT,
-		priority INTEGER DEFAULT 0,
-		dependency TEXT,
-		retry_count INTEGER DEFAULT 0,
-		max_retries INTEGER DEFAULT 3,
-		timeout INTEGER DEFAULT 300,
-		result TEXT,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
-
-	CREATE TABLE IF NOT EXISTS events (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		task_id TEXT,
-		origin TEXT,
-		message TEXT,
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		created_at DATETIME,
+		FOREIGN KEY(target_bot) REFERENCES bot_blueprints(alias)
 	);`
 
 	_, err = DB.Exec(schema)
