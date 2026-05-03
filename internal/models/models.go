@@ -4,37 +4,28 @@ import (
 	"time"
 )
 
-// Bot repräsentiert eine installierte Einheit
-type Bot struct {
-	ID           int       `json:"id"`
-	Alias        string    `json:"alias"`
-	Path         string    `json:"path"`
-	Type         string    `json:"type"`
-	Status       string    `json:"status"` // active, offline, corrupted
-	Meta         string    `json:"meta"`   // JSON-Header mit Capabilities
-	LastCheck    time.Time `json:"last_check"`
+// BotBlueprint repräsentiert die installierte Binary (der Bauplan)
+type BotBlueprint struct {
+	Alias    string    `json:"alias"`
+	Path     string    `json:"path"`
+	Type     string    `json:"type"`
+	LastScan time.Time `json:"last_scan"`
 }
 
-// Task repräsentiert eine Mission in der Queue
+// BotInstance repräsentiert einen laufenden Prozess basierend auf einem Blueprint
+type BotInstance struct {
+	ID       int       `json:"id"`
+	Alias    string    `json:"alias"` // Dies ist logisch dein Foreign Key zum Blueprint
+	PID      int       `json:"pid"`
+	Status   string    `json:"status"`    // starting, active, zombie, dead
+	LastSeen time.Time `json:"last_seen"`
+}
+
+// Task repräsentiert einen konkreten Auftrag für einen Bot
 type Task struct {
-	ID           string    `json:"id"`
-	BotAlias     string    `json:"bot_alias"`
-	Payload      string    `json:"payload"`      // Parameter für den Bot
-	Status       string    `json:"status"`       // pending, running, done, failed
-	Priority     int       `json:"priority"`
-	Dependency   string    `json:"dependency"`   // ID eines anderen Tasks
-	RetryCount   int       `json:"retry_count"`
-	MaxRetries   int       `json:"max_retries"`
-	Timeout      int       `json:"timeout"`      // Sekunden bis Kill
-	Result       string    `json:"result"`
-	CreatedAt    time.Time `json:"created_at"`
-}
-
-// Event für das System-Logging
-type Event struct {
-	ID        int       `json:"id"`
-	TaskID    string    `json:"task_id"`
-	Origin    string    `json:"origin"` // "SYSTEM" oder Bot-Name
-	Message   string    `json:"message"`
+	ID        string    `json:"id"` // Tipp: Nutze hier String, falls du UUIDs verwenden willst
+	TargetBot string    `json:"target_bot"` // Logischer Foreign Key zu BotBlueprint.Alias
+	Payload   string    `json:"payload"`
+	Status    string    `json:"status"` // pending, processing, done, failed
 	CreatedAt time.Time `json:"created_at"`
 }
