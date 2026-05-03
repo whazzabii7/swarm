@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"encoding/json"
 
 	"github.com/whazzabii7/swarm/internal/db"
+	"github.com/whazzabii7/swarm/internal/bot"
 )
 
 func main() {
@@ -28,7 +30,19 @@ func main() {
 
 	// Hier kommt später der Loop für den Event-Listener und Scheduler rein
 	log.Println("[!] Mainframe läuft. Warte auf Befehle...")
+
+	botManager := bot.NewBotManager()
 	
+	bps, err := botManager.SyncBlueprints()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "something went wrong: %v\n", err)
+		return
+	}
+	for _, bp := range bps {
+		prettyJSON, _ := json.MarshalIndent(bp, "", "  ")
+		fmt.Println(string(prettyJSON))
+	}
+
 	// Verhindert, dass das Programm sofort beendet (vorerst)
 	select {} 
 }
