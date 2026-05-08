@@ -7,20 +7,30 @@ import (
 
 type BotRequest struct {}
 
+type ListenerMessage struct {}
+
 type BotManager struct {
 	mfRequest chan models.MFRequest
 	requestChan chan BotRequest
+	listenerChan chan ListenerMessage
+	requestListener RequestListener
+	botListener BotListener
 }
 
 func NewBotManager(requests chan models.MFRequest) *BotManager {
+	rc := make(chan BotRequest)
+	lc := make(chan ListenerMessage)
 	return &BotManager {
 		mfRequest: requests,
-		requestChan: make(chan BotRequest),
+		requestChan: rc,
+		listenerChan: lc,
+		requestListener: *NewRequestListener(rc, lc),
+		botListener: *NewBotListener(lc),
 	}
 }
 
 func (b *BotManager) Start() {
-	for req := range b.requestChan {
+	for req := range b.listenerChan {
 		switch req {
 		default:
 		}
@@ -28,6 +38,8 @@ func (b *BotManager) Start() {
 }
 
 func (b *BotManager) Stop() {
-	close(b.requestChan)
+	b.requestListener.Stop()
+	b.botListener.Stop()
+	close(b.listenerChan)
 	fmt.Println("[BotManager] Stopped.")
 }
