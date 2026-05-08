@@ -4,12 +4,11 @@ import (
 	"database/sql"
 	"log"
 
-	_ "github.com/glebarez/go-sqlite" // CGO-freier Treiber
+	_ "github.com/glebarez/go-sqlite" 
 )
 
 var DB *sql.DB
 
-// InitDB initialisiert die SQLite Datenbank und legt Tabellen an
 func InitDB(dbPath string) {
 	var err error
 	DB, err = sql.Open("sqlite", dbPath)
@@ -17,7 +16,6 @@ func InitDB(dbPath string) {
 		log.Fatalf("[-] Fehler beim Öffnen der Datenbank: %v", err)
 	}
 
-	// Tabellen-Schema
 	const schema = `
 	CREATE TABLE IF NOT EXISTS bot_blueprints (
 		alias TEXT PRIMARY KEY,
