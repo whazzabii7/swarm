@@ -23,6 +23,8 @@ func InitDB(dbPath string) {
 		alias TEXT PRIMARY KEY,
 		path TEXT NOT NULL,
 		type TEXT,
+		version TEXT,
+		description TEXT,
 		last_scan DATETIME
 	);
 
