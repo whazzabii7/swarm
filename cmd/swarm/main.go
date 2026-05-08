@@ -2,12 +2,8 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"encoding/json"
 
-	"github.com/whazzabii7/swarm/internal/db"
-	"github.com/whazzabii7/swarm/internal/bot"
+	"github.com/whazzabii7/swarm/internal/mf"
 )
 
 func main() {
@@ -18,31 +14,11 @@ func main() {
  ___/ /       R esilience.
 /____/        M ainframe.
 	`)
-	fmt.Println(">>> Swarm Mainframe wird gestartet...")
+	fmt.Println(">>> Starting Swarm Mainframe...")
+	done := make(chan bool)
+	mfInstance := mf.NewMainframe()
 
-	// Sicherstellen, dass das data-Verzeichnis existiert
-	if _, err := os.Stat("data"); os.IsNotExist(err) {
-		os.Mkdir("data", 0755)
-	}
-
-	// DB Initialisieren
-	db.InitDB("data/swarm.db")
-
-	// Hier kommt später der Loop für den Event-Listener und Scheduler rein
-	log.Println("[!] Mainframe läuft. Warte auf Befehle...")
-
-	botManager := bot.NewBotManager()
-	
-	bps, err := botManager.SyncBlueprints()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "something went wrong: %v\n", err)
-		return
-	}
-	for _, bp := range bps {
-		prettyJSON, _ := json.MarshalIndent(bp, "", "  ")
-		fmt.Println(string(prettyJSON))
-	}
-
-	// Verhindert, dass das Programm sofort beendet (vorerst)
-	select {} 
+	go mfInstance.Start(done)
+	<-done
+	fmt.Println(">>> Swarm successfully shut down.")
 }
