@@ -1,50 +1,46 @@
 package db
 
 import (
+	"context"
 	"fmt"
 	
 	"github.com/whazzabii7/swarm/internal/models"
 )
 
-type RequestType int
+type DBRequest models.RequestType
 
 const (
-	SaveBlueprint RequestType = iota
+	SaveBlueprint DBRequest = iota + 100
 	UpdateBotStatus
 	GetActiveTasks
 	RegisterInstance
 )
 
-type DBRequest struct {
-	Type RequestType
-	Data any
-	Response chan string 
-}
-
 type Guardian struct {
-	requestChan chan DBRequest
+	requestChan chan models.Request[DBRequest]
 }
 
 func NewGuardian() *Guardian {
 	return &Guardian{
-		requestChan: make(chan DBRequest, 100),
+		requestChan: make(chan models.Request[DBRequest], 100),
 	}
 }
 
-func (g *Guardian) Start() {
+func (g *Guardian) Start(ctx context.Context, isStarted chan bool) {
 	fmt.Println("[DB-Guardian] Startup finished. Ready for requests...")
+	isStarted<-true
 
 	for req := range g.requestChan {
 		switch req.Type {
 		case SaveBlueprint:
-			bp, ok := req.Data.(models.BotBlueprint)
+			bp, ok := req.Payload.(models.BotBlueprint)
 			if ok {
-				g.processSaveBlueprint(bp)
+				g.processSaveBlueprint(ctx, bp)
 			}
 		case RegisterInstance:
-			bi, ok := req.Data.(models.BotInstance)
+			bi, ok := req.Payload.(models.BotInstance)
 			if ok {
-				g.handleRegisterInstance(bi)
+				g.handleRegisterInstance(ctx, bi)
 			}
 		default:
 			fmt.Println("[DB-Guardian] Unknown request type recieved")
@@ -57,6 +53,6 @@ func (g *Guardian) Stop() {
 	fmt.Println("[Guardian] Stopped.")
 }
 
-func (g *Guardian) Publish(t RequestType, data any) {
-	g.requestChan <- DBRequest{Type: t, Data: data, Response: nil}
+func (g *Guardian) Publish(t DBRequest, data any) {
+	g.requestChan <- models.Request[DBRequest]{Type: t, Payload: data, Response: nil}
 }

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"log"
 
@@ -9,7 +10,7 @@ import (
 
 var DB *sql.DB
 
-func InitDB(dbPath string) {
+func InitDB(ctx context.Context, dbPath string) {
 	var err error
 	DB, err = sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -44,7 +45,7 @@ func InitDB(dbPath string) {
 		FOREIGN KEY(target_bot) REFERENCES bot_blueprints(alias)
 	);`
 
-	_, err = DB.Exec(schema)
+	_, err = DB.ExecContext(ctx, schema)
 	if err != nil {
 		log.Fatalf("[-] Fehler beim Erstellen der Tabellen: %v", err)
 	}
