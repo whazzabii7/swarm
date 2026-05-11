@@ -1,6 +1,7 @@
 package bot
 
 import(
+	"context"
 	"fmt"
 	"os/exec"
 	"time"
@@ -8,8 +9,8 @@ import(
 	"github.com/whazzabii7/swarm/internal/models"
 )
 
-func (m *BotManager) StartBot(bp models.BotBlueprint) (*models.BotInstance, error) {
-	cmd := exec.Command(bp.Path)
+func (m *BotManager) StartBot(ctx context.Context, bp models.BotBlueprint) (*models.BotInstance, error) {
+	cmd := exec.CommandContext(ctx, bp.Path)
 
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start bot %s: %v", bp.Alias, err)
