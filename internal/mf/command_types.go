@@ -17,29 +17,44 @@ const (
 	CmdQuit
 )
 
-func stringToCommandType(cmdStr string) CommandType {
-	switch cmdStr {
-	case "quit", "q", ":q":
-		return CmdQuit
-	case "list-bp":
-		return CmdListBlueprints
-	case "list-bots":
-		return CmdListInstances
-	case "list-tasks":
-		return CmdListTasks
-	case "spawn":
-		return CmdSpawnBot
-	case "stop":
-		return CmdStopBot
-	case "load":
-		return CmdLoadTask
-	case "listen":
-		return CmdListenToBot
-	case "show":
-		return CmdShowOutput
-	case "print-db":
-		return CmdPrintDBTable
-	default:
-		return CmdPrintHelp
+var cmdNames = map[CommandType]string{
+	CmdListBlueprints: "list-bp",
+	CmdListInstances:  "list-bots",
+	CmdListTasks:      "list-tasks",
+	CmdSpawnBot:       "spawn",
+	CmdStopBot:        "stop",
+	CmdScanBotDir:     "scan",
+	CmdLoadTask:       "load",
+	CmdListenToBot:    "listen",
+	CmdShowOutput:     "show",
+	CmdPrintDBTable:   "print-db",
+	CmdPrintHelp:      "help",
+	CmdQuit:           "quit",
+}
+
+var cmdAliases = map[string]CommandType{
+	"q":  CmdQuit,
+	":q": CmdQuit,
+	"h":  CmdPrintHelp,
+	"?":  CmdPrintHelp,
+}
+
+func init() {
+	for cmd, name := range cmdNames {
+		cmdAliases[name] = cmd
 	}
+}
+
+func (c CommandType) String() string {
+	if name, ok := cmdNames[c]; ok {
+		return name
+	}
+	return "unknown"
+}
+
+func StringToCommandType(cmdStr string) CommandType {
+	if cmd, ok := cmdAliases[cmdStr]; ok {
+		return cmd
+	}
+	return CmdPrintHelp
 }

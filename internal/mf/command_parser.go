@@ -6,29 +6,18 @@ import (
 	"bufio"
 	"strings"
 
-	"github.com/whazzabii7/swarm/internal/models" 
+	// "github.com/whazzabii7/swarm/internal/models" 
 )
-
-
-type Arg struct {
-	Flag string  `json:"flag"`
-	Data string  `json:"data"`
-}
-
-type Command struct {
-	Commandtype CommandType `json:"command_type"`
-	Args []Arg              `json:"args"`
-}
 
 type CommandParser struct {
 	// requestChan	chan models.MFRequest
-	CommandRequest chan Command
+	CommandChan chan Command `json:"command_chan"`
 }
 
-func NewComandParser(requests chan models.MFRequest) *CommandParser {
+func NewComandParser() *CommandParser {
 	return &CommandParser{
 		// requestChan: requests,
-		CommandRequest: make(chan Command),
+		CommandChan: make(chan Command),
 	}
 }
 
@@ -38,27 +27,32 @@ func (c *CommandParser) RunShell() {
 		fmt.Print("swarm> ")
 		if !scanner.Scan() { break }
 		input := c.parse(scanner.Text())
-		switch input.Commandtype {
+		switch input.Type {
 		case CmdQuit:
-			c.CommandRequest <- input
+			c.CommandChan <- *input
 			c.Stop()
 			return
 		default:
-			fmt.Printf("Command was %d", input.Commandtype)
+			printCommand(input)
 		}
 	}
 }
 
+func printCommand(c *Command) {
+	count := 1
+	fmt.Printf("\nCommand: %s\n", c.Type.String())
+	for _, arg := range c.Args {
+		fmt.Printf("\t%d: %s %s\n", count, arg.Flag, arg.Data)
+		count++
+	}
+}
+
 func (c * CommandParser) Stop() {
-	close(c.CommandRequest)
+	close(c.CommandChan)
 	fmt.Println("[Commander] Stopped.")
 }
 
-func (c *CommandParser) parse(cmdStr string) Command {
+func (c *CommandParser) parse(cmdStr string) *Command {
 	cmd := strings.Split(cmdStr, " ")
-	cmdType := stringToCommandType(cmd[0])
-	return Command{
-		Commandtype: cmdType,	
-		Args: make([]Arg, 100),
-	}
+	return NewCommand(collectArgs(cmd))
 }
