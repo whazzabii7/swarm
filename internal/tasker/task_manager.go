@@ -5,23 +5,27 @@ import (
 	"github.com/whazzabii7/swarm/internal/models" 
 )
 
-type TaskRequest struct {}
+type TaskRequest models.RequestType
+
+const (
+	LoadTask TaskRequest = iota + 300
+)
 
 type TaskManager struct {
-	mfRequest chan models.MFRequest
-	requestChan chan TaskRequest
+	mfRequest chan models.Request[models.MFRequest]
+	requestChan chan models.Request[TaskRequest]
 }
 
-func NewTaskManager(requests chan models.MFRequest) *TaskManager {
+func NewTaskManager(requests chan models.Request[models.MFRequest]) *TaskManager {
 	return &TaskManager{
 		mfRequest: requests,
-		requestChan: make(chan TaskRequest),
+		requestChan: make(chan models.Request[TaskRequest], 100),
 	}
 }
 
 func (t *TaskManager) Start() {
 	for req := range t.requestChan {
-		switch req {
+		switch req.Type {
 		default:
 		}
 	}
