@@ -7,13 +7,27 @@ import (
 	"github.com/whazzabii7/swarm/internal/models" 
 )
 
+type ListenerType int
+const (
+	ListenToMFRequest ListenerType = iota
+	ListenToBots	
+)
+
 type BotRequest models.RequestType
 
 const (
-	PingRequest BotRequest = iota + 200
+	BRPingRequest BotRequest = iota + 200
+	BRStartBot
+	BRStopBot
+	BRSyncBlueprints
 )
 
-type ListenerMessage struct {}
+type ListenerMessage struct {
+	source ListenerType
+	requestType any
+	payload any
+	response chan any
+}
 
 type BotManager struct {
 	mfRequest chan models.Request[models.MFRequest] // <-chan, for sending requests to Mainframe
@@ -24,8 +38,8 @@ type BotManager struct {
 }
 
 func NewBotManager(requests chan models.Request[models.MFRequest]) *BotManager {
-	rc := make(chan models.Request[BotRequest])
-	lc := make(chan ListenerMessage)
+	rc := make(chan models.Request[BotRequest], 100)
+	lc := make(chan ListenerMessage, 100)
 	return &BotManager {
 		mfRequest: requests,
 		requestChan: rc,
@@ -44,16 +58,39 @@ func (b *BotManager) Start(ctx context.Context, isStarted chan bool) {
 	isStarted<-true
 
 	for req := range b.listenerChan {
-		switch req {
-		default:
+		switch req.source {
+		case ListenToMFRequest:
+			b.handleMFRequest(ctx, req)
+		case ListenToBots:
+			b.handleBotRequest(req)
 		}
 	}
 }
+
+func (b *BotManager) handleMFRequest(ctx context.Context, msg ListenerMessage) {
+	switch msg.requestType {
+	case BRStartBot:
+		b.StartBot(ctx, msg.payload.(models.BotBlueprint))
+	case BRStopBot:	
+    case BRPingRequest:
+	case BRSyncBlueprints:
+	}
+}
+
+func (b *BotManager) handleBotRequest(msg ListenerMessage) {}
 
 func (b *BotManager) wait(cond chan bool) {
 	if <-cond {
 		return
 	}
+}
+
+func (b *BotManager) requestMainframe(request models.MFRequest, response chan models.Response) {
+	b.mfRequest <- models.Request[models.MFRequest]{ Type: request, Payload: nil, Response: response }
+}
+
+func (b *BotManager) Submit(t BotRequest, data any, response chan models.Response ) {
+	b.requestChan<-models.Request[BotRequest]{ Type: t, Payload: data, Response: response }
 }
 
 func (b *BotManager) Stop() {
