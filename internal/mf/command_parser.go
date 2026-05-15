@@ -33,17 +33,8 @@ func (c *CommandParser) RunShell() {
 			c.Stop()
 			return
 		default:
-			printCommand(input)
+			fmt.Printf("%s\n", input)
 		}
-	}
-}
-
-func printCommand(c *Command) {
-	count := 1
-	fmt.Printf("\nCommand: %s\n", c.Type.String())
-	for _, arg := range c.Args {
-		fmt.Printf("\t%d: %s %s\n", count, arg.Flag, arg.Data)
-		count++
 	}
 }
 
