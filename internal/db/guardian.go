@@ -10,10 +10,11 @@ import (
 type DBRequest models.RequestType
 
 const (
-	SaveBlueprint DBRequest = iota + 100
-	UpdateBotStatus
-	GetActiveTasks
-	RegisterInstance
+	DBSaveBlueprint DBRequest = iota + 100
+	DBGetBlueprint
+	DBUpdateBotStatus
+	DBGetActiveTasks
+	DBRegisterInstance
 )
 
 type Guardian struct {
@@ -32,12 +33,13 @@ func (g *Guardian) Start(ctx context.Context, isStarted chan bool) {
 
 	for req := range g.requestChan {
 		switch req.Type {
-		case SaveBlueprint:
+		case DBSaveBlueprint:
 			bp, ok := req.Payload.(models.BotBlueprint)
 			if ok {
 				g.processSaveBlueprint(ctx, bp)
 			}
-		case RegisterInstance:
+		case DBGetBlueprint:
+		case DBRegisterInstance:
 			bi, ok := req.Payload.(models.BotInstance)
 			if ok {
 				g.handleRegisterInstance(ctx, bi)
@@ -53,6 +55,6 @@ func (g *Guardian) Stop() {
 	fmt.Println("[Guardian] Stopped.")
 }
 
-func (g *Guardian) Publish(t DBRequest, data any) {
-	g.requestChan <- models.Request[DBRequest]{Type: t, Payload: data, Response: nil}
+func (g *Guardian) Submit(t DBRequest, data any, response chan models.Response) {
+	g.requestChan <- models.Request[DBRequest]{Type: t, Payload: data, Response: response}
 }
