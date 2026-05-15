@@ -90,8 +90,30 @@ func (m *Mainframe) wait(cond chan bool) {
 		return
 	}
 }
+
 func (m *Mainframe) handleRequest(req models.Request[models.MFRequest]) {}
-func (m *Mainframe) executeCommand(cmd Command) {}
+
+func (m *Mainframe) executeCommand(cmd Command) {
+	switch cmd.Type {
+	case CmdSpawnBot:
+	if arg, ok := cmd.Args[FlagAlias]; ok {
+		var botBlueprint models.BotBlueprint
+		if data, ok := m.blueprints[arg.Data[0]]; !ok {
+			botBlueprint = data
+		} else {
+			responseCh := make(chan models.Response)
+			m.guardian.Submit(db.DBGetBlueprint, arg, responseCh)
+			response := <-responseCh
+			if response.Err != nil { panic(response.Err) }
+			m.blueprints[arg.Data[0]] = response.Payload.(models.BotBlueprint)
+			botBlueprint = response.Payload.(models.BotBlueprint)
+		}
+		go m.manager.Submit(bot.BRStartBot, botBlueprint, nil)
+	}
+	default:
+	}
+}
+
 func (m *Mainframe) checkHealth() {}
 
 func (m *Mainframe) shutdown(done chan bool, cancel context.CancelFunc) {
