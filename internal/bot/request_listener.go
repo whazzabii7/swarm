@@ -21,8 +21,11 @@ func NewRequestListener(request chan models.Request[BotRequest], listen chan Lis
 func (r *RequestListener) Start(ctx context.Context, isStarted chan bool) {
 	isStarted<-true
 	for req := range r.requestChan {
-		switch req {
-		default:
+		r.listenerChan<-ListenerMessage{ 
+			source: ListenToMFRequest,
+			requestType: req.Type,
+			payload: req.Payload,
+			response: req.Response,
 		}
 	}
 }
