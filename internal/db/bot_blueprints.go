@@ -2,15 +2,14 @@ package db
 
 import (
     "context"
-	"fmt"
-	"log"
 	"time"
 
 	"github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/ui"
 )
 
 func (g *Guardian) processSaveBlueprint(ctx context.Context, bp models.BotBlueprint) {
-	fmt.Printf("[DB-Guardian] SQL-Action: Saving Bot '%s' (%s)\n", bp.Alias, bp.Path)
+	ui.Logf(ui.LevelInfo, "DB-Guardian", "SQL-Action: Saving Bot '%s' (%s)\n", bp.Alias, bp.Path)
 	query := `
 	INSERT INTO bot_blueprints (alias, path, type, version, description, last_scan)
 	VALUES (?, ?, ?, ?, ?, ?)
@@ -23,8 +22,35 @@ func (g *Guardian) processSaveBlueprint(ctx context.Context, bp models.BotBluepr
 
 	_, err := DB.ExecContext(ctx, query, bp.Alias, bp.Path, bp.Type, bp.Version, bp.Description, bp.LastScan.Format(time.RFC3339))
 	if err != nil {
-		log.Printf("[-] Guardian Error with SQL-Upsert for %s: %v", bp.Alias, err)
+		ui.Logf(ui.LevelError, "DB-Guardian", "[-] Error with SQL-Upsert for %s: %v", bp.Alias, err)
 		return
 	}
-	log.Printf("[+] Guardian Blueprint '%s' syncronised.", bp.Alias)
+	ui.Logf(ui.LevelInfo, "DB-Guardian", "[+] Blueprint '%s' syncronised.", bp.Alias)
+}
+
+func (g *Guardian) handleGetBlueprint(ctx context.Context, bpAlias string, response chan models.Response) {
+	ui.Logf(ui.LevelInfo, "DB-Guardian", "SQL-Action: Get Bot '%s'\n", bpAlias)
+	query := `
+	SELECT alias, path, type, version, description, last_scan
+    FROM bot_blueprints
+    WHERE alias = ?
+    LIMIT 1;`
+
+    var bp models.BotBlueprint
+
+    err := DB.QueryRowContext(ctx, query, bpAlias).Scan(
+        &bp.Alias,
+        &bp.Path,
+        &bp.Type,
+        &bp.Version,
+        &bp.Description,
+        &bp.LastScan,
+    )
+    if err != nil {
+		ui.Logf(ui.LevelError, "DB-Guardian", "[-] Error with SQL-Upsert for %s: %v", bp.Alias, err)
+        response <- models.Response{ Err: err, Payload: nil  }
+        return
+    }
+	ui.Logf(ui.LevelInfo, "DB-Guardian", "[+] Blueprint '%s' loaded.", bp.Alias)
+    response <- models.Response { Err: nil, Payload: bp }
 }

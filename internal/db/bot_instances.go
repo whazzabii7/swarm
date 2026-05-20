@@ -2,10 +2,10 @@ package db
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/ui"
 )
 
 func (g *Guardian) handleRegisterInstance(ctx context.Context, inst models.BotInstance) {
@@ -15,8 +15,8 @@ func (g *Guardian) handleRegisterInstance(ctx context.Context, inst models.BotIn
 
 	_, err := DB.ExecContext(ctx, query, inst.Alias, inst.PID, inst.Status, inst.LastSeen.Format(time.RFC3339))
 	if err != nil {
-		log.Printf("[-] Guardian Error: Could not register instance for %s: %v", inst.Alias, err)
+		ui.Logf(ui.LevelError, "DB-Guardian", "[-] Could not register instance for %s: %v", inst.Alias, err)
 		return
 	}
-	log.Printf("[+] Guardian: Instance of '%s' registered with PID %d", inst.Alias, inst.PID)
+	ui.Logf(ui.LevelInfo, "DB-Guardian", "[+] Instance of '%s' registered with PID %d", inst.Alias, inst.PID)
 }

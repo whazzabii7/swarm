@@ -2,13 +2,13 @@ package bot
 
 import (
 	"encoding/json"
-	"fmt"
 	"path/filepath"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
 
+	"github.com/whazzabii7/swarm/internal/ui"
 	"github.com/whazzabii7/swarm/internal/models"
 )
 
@@ -49,7 +49,7 @@ func (m *BotManager) SyncBlueprints(blueprints *map[string]models.BotBlueprint )
 
 		blueprint, err := m.getBotHeader(path)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Header of %s couldn't be read: %v\n", file.Name(), err)
+			ui.Logf(ui.LevelError, "BotManager", "Header of %s couldn't be read: %v\n", file.Name(), err)
 			continue
 		}
 		(*blueprints)[blueprint.Alias] = *blueprint

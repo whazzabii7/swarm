@@ -1,15 +1,16 @@
 package bot
 
 import(
-	"context"
 	"fmt"
+	"context"
 	"os/exec"
 	"time"
 
 	"github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/ui"
 )
 
-func (m *BotManager) StartBot(ctx context.Context, bp models.BotBlueprint) (*models.BotInstance, error) {
+func (m *BotManager) startBot(ctx context.Context, bp models.BotBlueprint) (*models.BotInstance, error) {
 	cmd := exec.CommandContext(ctx, bp.Path)
 
 	if err := cmd.Start(); err != nil {
@@ -23,11 +24,11 @@ func (m *BotManager) StartBot(ctx context.Context, bp models.BotBlueprint) (*mod
 		LastSeen: time.Now().UTC().Truncate(time.Second),
 	}
 
-	fmt.Printf("[BotManager] Bot %s started with PID %d\n", instance.Alias, instance.PID)
+	ui.Logf(ui.LevelInfo, "BotManager", "Bot %s started with PID %d\n", instance.Alias, instance.PID)
 
 	go func(){
 		cmd.Wait()
-		fmt.Printf("[BotManager] Bot %s (PID %d) stopped.\n", instance.Alias, instance.PID)
+		ui.Logf(ui.LevelInfo, "BotManager", "Bot %s (PID %d) stopped.\n", instance.Alias, instance.PID)
 	}()
 
 	return &instance, nil

@@ -2,13 +2,12 @@ package mf
 
 import (
 	"context"
-	// "fmt"
-	"log"
 	"os"
 	"time"
 	// "encoding/json"
 
 	"github.com/whazzabii7/swarm/internal/db"
+	"github.com/whazzabii7/swarm/internal/ui"
 	"github.com/whazzabii7/swarm/internal/bot"
 	"github.com/whazzabii7/swarm/internal/tasker"
 	"github.com/whazzabii7/swarm/internal/models"
@@ -68,7 +67,7 @@ func (m *Mainframe) Start(done chan bool) {
 	go m.cmder.RunShell()
 
 	// main loop
-	log.Println("[!] Mainframe running. Waiting for instructions...")
+	ui.Log(ui.LevelInfo, "Mainframe", "[!] running. Waiting for instructions...")
 	for {
 		select {
 			case req := <-m.requestChan:
@@ -96,21 +95,27 @@ func (m *Mainframe) handleRequest(req models.Request[models.MFRequest]) {}
 func (m *Mainframe) executeCommand(cmd Command) {
 	switch cmd.Type {
 	case CmdSpawnBot:
-	if arg, ok := cmd.Args[FlagAlias]; ok {
-		var botBlueprint models.BotBlueprint
-		if data, ok := m.blueprints[arg.Data[0]]; !ok {
-			botBlueprint = data
-		} else {
-			responseCh := make(chan models.Response)
-			m.guardian.Submit(db.DBGetBlueprint, arg, responseCh)
-			response := <-responseCh
-			if response.Err != nil { panic(response.Err) }
-			m.blueprints[arg.Data[0]] = response.Payload.(models.BotBlueprint)
-			botBlueprint = response.Payload.(models.BotBlueprint)
-		}
-		go m.manager.Submit(bot.BRStartBot, botBlueprint, nil)
-	}
+		m.execSpawnBot(cmd)
+	case CmdListBlueprints:
+		m.execListBlueprints(cmd)
+	case CmdListInstances:
+		m.execListInstances(cmd)
+	case CmdListTasks:
+		m.execListTasks(cmd)
+	case CmdStopBot:
+		m.execStopBot(cmd)
+	case CmdScanBotDir:
+		m.execScanBotDir(cmd)
+	case CmdLoadTask:
+		m.execLoadTask(cmd)
+	case CmdListenToBot:
+		m.execListenToBot(cmd)
+	case CmdShowOutput:
+		m.execShowOutput(cmd)
+	case CmdPrintDBTable:
+		m.execPrintDBTable(cmd)
 	default:
+		m.execPrintHelp(cmd)
 	}
 }
 

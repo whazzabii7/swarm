@@ -2,9 +2,9 @@ package db
 
 import (
 	"context"
-	"fmt"
 	
 	"github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/ui"
 )
 
 type DBRequest models.RequestType
@@ -28,31 +28,33 @@ func NewGuardian() *Guardian {
 }
 
 func (g *Guardian) Start(ctx context.Context, isStarted chan bool) {
-	fmt.Println("[DB-Guardian] Startup finished. Ready for requests...")
+	ui.Log(ui.LevelInfo, "Guardian", "Startup finished. Ready for requests...")
 	isStarted<-true
 
 	for req := range g.requestChan {
 		switch req.Type {
 		case DBSaveBlueprint:
-			bp, ok := req.Payload.(models.BotBlueprint)
-			if ok {
+		    if bp, ok := req.Payload.(models.BotBlueprint); ok {
 				g.processSaveBlueprint(ctx, bp)
 			}
 		case DBGetBlueprint:
+			if bp, ok := req.Payload.(string); ok {
+				g.handleGetBlueprint(ctx, bp, req.Response)
+			}
 		case DBRegisterInstance:
 			bi, ok := req.Payload.(models.BotInstance)
 			if ok {
 				g.handleRegisterInstance(ctx, bi)
 			}
 		default:
-			fmt.Println("[DB-Guardian] Unknown request type recieved")
+			ui.Log(ui.LevelInfo, "Guardian", "Unknown request type recieved")
 		}
 	}
 }
 
 func (g *Guardian) Stop() {
 	close(g.requestChan)
-	fmt.Println("[Guardian] Stopped.")
+	ui.Log(ui.LevelInfo, "Guardian", "Stopped.")
 }
 
 func (g *Guardian) Submit(t DBRequest, data any, response chan models.Response) {

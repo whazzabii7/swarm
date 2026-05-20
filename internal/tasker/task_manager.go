@@ -1,8 +1,8 @@
 package tasker
 
 import (
-	"fmt"
 	"github.com/whazzabii7/swarm/internal/models" 
+	"github.com/whazzabii7/swarm/internal/ui" 
 )
 
 type TaskRequest models.RequestType
@@ -33,5 +33,5 @@ func (t *TaskManager) Start() {
 
 func (t *TaskManager) Stop() {
 	close(t.requestChan)
-	fmt.Println("[Tasker] Stopped.")
+	ui.Log(ui.LevelInfo, "Tasker", "Stopped.")
 }

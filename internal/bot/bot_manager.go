@@ -2,9 +2,9 @@ package bot
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/whazzabii7/swarm/internal/models" 
+	"github.com/whazzabii7/swarm/internal/ui" 
 )
 
 type ListenerType int
@@ -26,7 +26,7 @@ type ListenerMessage struct {
 	source ListenerType
 	requestType any
 	payload any
-	response chan any
+	response chan models.Response
 }
 
 type BotManager struct {
@@ -70,7 +70,7 @@ func (b *BotManager) Start(ctx context.Context, isStarted chan bool) {
 func (b *BotManager) handleMFRequest(ctx context.Context, msg ListenerMessage) {
 	switch msg.requestType {
 	case BRStartBot:
-		b.StartBot(ctx, msg.payload.(models.BotBlueprint))
+		b.startBot(ctx, msg.payload.(models.BotBlueprint))
 	case BRStopBot:	
     case BRPingRequest:
 	case BRSyncBlueprints:
@@ -97,5 +97,5 @@ func (b *BotManager) Stop() {
 	b.requestListener.Stop()
 	b.botListener.Stop()
 	close(b.listenerChan)
-	fmt.Println("[BotManager] Stopped.")
+	ui.Log(ui.LevelInfo, "BotManager", "Stopped.")
 }

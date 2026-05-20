@@ -1,12 +1,12 @@
 package mf
 
 import (
-	"fmt"
 	"os"
 	"bufio"
 	"strings"
 
 	// "github.com/whazzabii7/swarm/internal/models" 
+	"github.com/whazzabii7/swarm/internal/ui" 
 )
 
 type CommandParser struct {
@@ -24,7 +24,6 @@ func NewComandParser() *CommandParser {
 func (c *CommandParser) RunShell() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
-		fmt.Print("swarm> ")
 		if !scanner.Scan() { break }
 		input := c.parse(scanner.Text())
 		switch input.Type {
@@ -33,14 +32,14 @@ func (c *CommandParser) RunShell() {
 			c.Stop()
 			return
 		default:
-			fmt.Printf("%s\n", input)
+			c.CommandChan <- *input
 		}
 	}
 }
 
 func (c * CommandParser) Stop() {
 	close(c.CommandChan)
-	fmt.Println("[Commander] Stopped.")
+	ui.Log(ui.LevelInfo, "Commander", "Stopped.")
 }
 
 func (c *CommandParser) parse(cmdStr string) *Command {
