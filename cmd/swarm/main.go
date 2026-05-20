@@ -2,23 +2,26 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/whazzabii7/swarm/internal/mf"
+	"github.com/whazzabii7/swarm/internal/ui"
 )
 
 func main() {
-	fmt.Println(`
+	ui.InitUI()
+	ui.Log(ui.LevelInfo, "MAIN", `
    _____      S tructure.
   / ___/      W orkflow.
   \__ \       A utomation.
  ___/ /       R esilience.
 /____/        M ainframe.
 	`)
-	fmt.Println(">>> Starting Swarm Mainframe...")
+	ui.Log(ui.LevelInfo, "MAIN", ">>> Starting Swarm Mainframe...")
 	done := make(chan bool)
 	mfInstance := mf.NewMainframe()
 
 	go mfInstance.Start(done)
 	<-done
-	fmt.Println(">>> Swarm successfully shut down.")
+	ui.MainUI.Stop()
+    fmt.Println(">>> successfully shut down.")
+
 }
