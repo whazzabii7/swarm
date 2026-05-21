@@ -64,6 +64,8 @@ func (m *Mainframe) Start(done chan bool) {
 	m.wait(isStarted)
 	go m.manager.Start(ctx, isStarted)
 	m.wait(isStarted)
+	m.scanBotDir("./bot")
+
 	go m.cmder.RunShell()
 
 	// main loop
@@ -123,8 +125,14 @@ func (m *Mainframe) checkHealth() {}
 
 func (m *Mainframe) shutdown(done chan bool, cancel context.CancelFunc) {
 	cancel()
-	m.tasker.Stop()
-	m.manager.Stop()
-	m.guardian.Stop()
+	isStopped := make(chan bool)
+	go m.cmder.Stop(isStopped)
+	m.wait(isStopped)
+	go m.tasker.Stop(isStopped)
+	m.wait(isStopped)
+	go m.manager.Stop(isStopped)
+	m.wait(isStopped)
+	go m.guardian.Stop(isStopped)
+	m.wait(isStopped)
 	done<-true
 }
