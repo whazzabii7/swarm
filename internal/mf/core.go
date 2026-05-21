@@ -6,6 +6,7 @@ import (
 	"time"
 	// "encoding/json"
 
+	"github.com/whazzabii7/swarm/internal/mf/command"
 	"github.com/whazzabii7/swarm/internal/db"
 	"github.com/whazzabii7/swarm/internal/ui"
 	"github.com/whazzabii7/swarm/internal/bot"
@@ -22,7 +23,7 @@ type Mainframe struct {
 	guardian *db.Guardian
 	manager *bot.BotManager
 	tasker  *tasker.TaskManager
-	cmder   *CommandParser
+	cmder   *command.Parser
 
 	// RAM-Memory (State)
 	blueprints map[string]models.BotBlueprint // Key: Alias
@@ -45,9 +46,9 @@ func NewMainframe() *Mainframe {
 	}
 
 	m.guardian = db.NewGuardian()
-	m.manager = bot.NewBotManager(m.requestChan)
+	m.manager = bot.NewManager(m.requestChan)
 	m.tasker = tasker.NewTaskManager(m.requestChan)
-	m.cmder = NewComandParser()
+	m.cmder = command.NewParser()
 	return &m
 }
 
@@ -75,7 +76,7 @@ func (m *Mainframe) Start(done chan bool) {
 			case req := <-m.requestChan:
 				m.handleRequest(req)
 			case cmd := <-m.cmder.CommandChan:
-				if cmd.Type == CmdQuit {
+				if cmd.Type == command.Quit {
 					m.shutdown(done, cancel)
 					return
 				}
@@ -94,27 +95,27 @@ func (m *Mainframe) wait(cond chan bool) {
 
 func (m *Mainframe) handleRequest(req models.Request[models.MFRequest]) {}
 
-func (m *Mainframe) executeCommand(cmd Command) {
+func (m *Mainframe) executeCommand(cmd command. Command) {
 	switch cmd.Type {
-	case CmdSpawnBot:
+	case command.SpawnBot:
 		m.execSpawnBot(cmd)
-	case CmdListBlueprints:
+	case command.ListBlueprints:
 		m.execListBlueprints(cmd)
-	case CmdListInstances:
+	case command.ListInstances:
 		m.execListInstances(cmd)
-	case CmdListTasks:
+	case command.ListTasks:
 		m.execListTasks(cmd)
-	case CmdStopBot:
+	case command.StopBot:
 		m.execStopBot(cmd)
-	case CmdScanBotDir:
+	case command.ScanBotDir:
 		m.execScanBotDir(cmd)
-	case CmdLoadTask:
+	case command.LoadTask:
 		m.execLoadTask(cmd)
-	case CmdListenToBot:
+	case command.ListenToBot:
 		m.execListenToBot(cmd)
-	case CmdShowOutput:
+	case command.ShowOutput:
 		m.execShowOutput(cmd)
-	case CmdPrintDBTable:
+	case command.PrintDBTable:
 		m.execPrintDBTable(cmd)
 	default:
 		m.execPrintHelp(cmd)
