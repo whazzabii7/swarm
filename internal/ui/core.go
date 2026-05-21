@@ -28,13 +28,13 @@ type UIManager struct {
 
 var MainUI *UIManager
 
-func InitUI() {
+func InitUI(uiDone chan bool) {
 	MainUI = &UIManager{
 		logChan:     make(chan LogEvent, 500),
-		prompt:      "swarm> ",
+		prompt:      "[swarm> ",
 		inputBuffer: &strings.Builder{},
 	}
-	go MainUI.routeAndPrintLoop()
+	go MainUI.routeAndPrintLoop(uiDone)
 }
 
 func (ui *UIManager) Stop() {
@@ -54,7 +54,7 @@ func Logf(level LogLevel, module, format string, args ...any) {
 }
 
 
-func (ui *UIManager) routeAndPrintLoop() {
+func (ui *UIManager) routeAndPrintLoop(uiDone chan bool) {
 	for event := range ui.logChan {
 		
 		var prefix string
@@ -71,6 +71,7 @@ func (ui *UIManager) routeAndPrintLoop() {
 
 		ui.writeToTerminal(formattedMsg)
 	}
+	uiDone <- true
 }
 
 func (ui *UIManager) writeToTerminal(msg string) {
