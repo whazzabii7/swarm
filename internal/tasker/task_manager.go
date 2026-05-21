@@ -31,7 +31,8 @@ func (t *TaskManager) Start() {
 	}
 }
 
-func (t *TaskManager) Stop() {
+func (t *TaskManager) Stop(isStopped chan bool) {
 	close(t.requestChan)
 	ui.Log(ui.LevelInfo, "Tasker", "Stopped.")
+	isStopped <- true
 }
