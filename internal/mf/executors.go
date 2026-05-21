@@ -29,11 +29,31 @@ func (m *Mainframe) execListBlueprints(cmd Command) {}
 func (m *Mainframe) execListInstances(cmd Command) {}
 func (m *Mainframe) execListTasks(cmd Command) {}
 func (m *Mainframe) execStopBot(cmd Command) {}
-func (m *Mainframe) execScanBotDir(cmd Command) {}
+
+func (m *Mainframe) execScanBotDir(cmd Command) {
+	if arg, ok := cmd.Args[FlagPath]; ok {
+		path := arg.Data[0]
+		m.scanBotDir(path)
+	}
+}
+
+func (m *Mainframe) scanBotDir(path string) {
+	payload := struct {
+		path string
+		ram map[string]models.BotBlueprint
+	}{ path, m.blueprints }
+	response := make(chan models.Response)
+	go m.manager.Submit(bot.BRSyncBlueprints, payload, response)
+	<-response
+
+	go m.guardian.Submit(db.DBCheckBlueprints, m.blueprints, nil)
+}
+
 func (m *Mainframe) execLoadTask(cmd Command) {}
 func (m *Mainframe) execListenToBot(cmd Command) {}
 func (m *Mainframe) execShowOutput(cmd Command) {}
 func (m *Mainframe) execPrintDBTable(cmd Command) {}
+
 func (m *Mainframe) execPrintHelp(cmd Command) {
 	if msg, ok := cmd.Args[FlagVerbose]; ok {
 		ui.Logf(ui.LevelInfo, "Help", "%s\n", msg.Data[0])
