@@ -48,13 +48,13 @@ func (g *Guardian) handleGetBlueprint(ctx context.Context, bpAlias string, respo
     )
     if err != nil {
 		ui.Logf(ui.LevelError, "DB-Guardian", "[-] Error with SQL-Upsert for %s: %v", bp.Alias, err)
-        response <- models.Response{ Err: err, Payload: nil  }
+        response <- models.Response{ Err: err, Payload: models.Payload(nil)  }
         return
     }
 	ui.Logf(ui.LevelInfo, "DB-Guardian", "[+] Blueprint '%s' loaded.", bp.Alias)
-    response <- models.Response { Err: nil, Payload: bp }
+    response <- models.Response { Err: nil, Payload: models.Payload(bp) }
 }
 
-func (g *Guardian) handleCheckBlueprints(ctx context.Context, bps map[string]models.BotBlueprint) {
+func (g *Guardian) handleCheckBlueprints(ctx context.Context, bps []models.BotBlueprint) {
 
 }
