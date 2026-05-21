@@ -7,7 +7,9 @@ import (
 )
 
 func main() {
-	ui.InitUI()
+	uiDone := make(chan bool)
+	ui.InitUI(uiDone)
+
 	ui.Log(ui.LevelInfo, "MAIN", `
    _____      S tructure.
   / ___/      W orkflow.
@@ -16,12 +18,13 @@ func main() {
 /____/        M ainframe.
 	`)
 	ui.Log(ui.LevelInfo, "MAIN", ">>> Starting Swarm Mainframe...")
+
 	done := make(chan bool)
 	mfInstance := mf.NewMainframe()
 
 	go mfInstance.Start(done)
 	<-done
 	ui.MainUI.Stop()
-    fmt.Println(">>> successfully shut down.")
-
+	<-uiDone
+    fmt.Println(">>> successfully shut down.]")
 }
