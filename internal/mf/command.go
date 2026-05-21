@@ -11,7 +11,7 @@ var(
 	FlagSource  = Flag { "--source", "-s" }
 	FlagVerbose = Flag { "--verbose", "-v" }
 	FlagID 		= Flag { "--id", "-i" }
-	FlagAlias   = Flag { "--alias" }
+	FlagAlias   = Flag { "--alias", "-a" }
 	FlagPID     = Flag { "--pid" }
 )
 
