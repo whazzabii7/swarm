@@ -24,7 +24,7 @@ func (r *RequestListener) Start(ctx context.Context, isStarted chan bool) {
 		r.listenerChan<-ListenerMessage{ 
 			source: ListenToMFRequest,
 			requestType: req.Type,
-			payload: req.Payload,
+			payload: req.Payload.Unwrap(),
 			response: req.Response,
 		}
 	}
