@@ -35,20 +35,19 @@ func (g *Guardian) Start(ctx context.Context, isStarted chan bool) {
 	for req := range g.requestChan {
 		switch req.Type {
 		case DBSaveBlueprint:
-		    if bp, ok := req.Payload.(models.BotBlueprint); ok {
+		    if bp, ok := req.Payload.GetBluePrint(); ok {
 				g.processSaveBlueprint(ctx, bp)
 			}
 		case DBGetBlueprint:
-			if bp, ok := req.Payload.(string); ok {
+			if bp, ok := req.Payload.GetString(); ok {
 				g.handleGetBlueprint(ctx, bp, req.Response)
 			}
 		case DBCheckBlueprints:
-			if bps, ok := req.Payload.(map[string]models.BotBlueprint); ok {
+			if bps, ok := req.Payload.GetBluePrints(); ok {
 				g.handleCheckBlueprints(ctx, bps)
 			}
 		case DBRegisterInstance:
-			bi, ok := req.Payload.(models.BotInstance)
-			if ok {
+			if bi, ok := req.Payload.GetInstance(); ok {
 				g.handleRegisterInstance(ctx, bi)
 			}
 		default:
@@ -64,5 +63,5 @@ func (g *Guardian) Stop(isStopped chan bool) {
 }
 
 func (g *Guardian) Submit(t DBRequest, data any, response chan models.Response) {
-	g.requestChan <- models.Request[DBRequest]{Type: t, Payload: data, Response: response}
+	g.requestChan <- models.Request[DBRequest]{Type: t, Payload: models.Payload(data), Response: response}
 }
