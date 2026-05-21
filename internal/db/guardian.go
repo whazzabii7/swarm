@@ -12,6 +12,7 @@ type DBRequest models.RequestType
 const (
 	DBSaveBlueprint DBRequest = iota + 100
 	DBGetBlueprint
+	DBCheckBlueprints
 	DBUpdateBotStatus
 	DBGetActiveTasks
 	DBRegisterInstance
@@ -41,6 +42,10 @@ func (g *Guardian) Start(ctx context.Context, isStarted chan bool) {
 			if bp, ok := req.Payload.(string); ok {
 				g.handleGetBlueprint(ctx, bp, req.Response)
 			}
+		case DBCheckBlueprints:
+			if bps, ok := req.Payload.(map[string]models.BotBlueprint); ok {
+				g.handleCheckBlueprints(ctx, bps)
+			}
 		case DBRegisterInstance:
 			bi, ok := req.Payload.(models.BotInstance)
 			if ok {
@@ -52,9 +57,10 @@ func (g *Guardian) Start(ctx context.Context, isStarted chan bool) {
 	}
 }
 
-func (g *Guardian) Stop() {
+func (g *Guardian) Stop(isStopped chan bool) {
 	close(g.requestChan)
 	ui.Log(ui.LevelInfo, "Guardian", "Stopped.")
+	isStopped <- true
 }
 
 func (g *Guardian) Submit(t DBRequest, data any, response chan models.Response) {

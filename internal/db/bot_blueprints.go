@@ -54,3 +54,7 @@ func (g *Guardian) handleGetBlueprint(ctx context.Context, bpAlias string, respo
 	ui.Logf(ui.LevelInfo, "DB-Guardian", "[+] Blueprint '%s' loaded.", bp.Alias)
     response <- models.Response { Err: nil, Payload: bp }
 }
+
+func (g *Guardian) handleCheckBlueprints(ctx context.Context, bps map[string]models.BotBlueprint) {
+
+}

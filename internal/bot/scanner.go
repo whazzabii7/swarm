@@ -29,8 +29,8 @@ func (m *BotManager) getBotHeader(path string) ( *models.BotBlueprint, error ) {
 	return &bp, nil 
 }
 
-func (m *BotManager) SyncBlueprints(blueprints *map[string]models.BotBlueprint ) error {
-	files, err := os.ReadDir("./bots")
+func (m *BotManager) syncBlueprints(path string, blueprints map[string]models.BotBlueprint ) error {
+	files, err := os.ReadDir(path)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func (m *BotManager) SyncBlueprints(blueprints *map[string]models.BotBlueprint )
 			ui.Logf(ui.LevelError, "BotManager", "Header of %s couldn't be read: %v\n", file.Name(), err)
 			continue
 		}
-		(*blueprints)[blueprint.Alias] = *blueprint
+		blueprints[blueprint.Alias] = *blueprint
 	}
 	return nil
 }

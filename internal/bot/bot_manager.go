@@ -74,6 +74,8 @@ func (b *BotManager) handleMFRequest(ctx context.Context, msg ListenerMessage) {
 	case BRStopBot:	
     case BRPingRequest:
 	case BRSyncBlueprints:
+		payload  := msg.payload.(struct {path string; ram map[string]models.BotBlueprint})
+		b.syncBlueprints(&payload.ram)
 	}
 }
 
@@ -93,9 +95,10 @@ func (b *BotManager) Submit(t BotRequest, data any, response chan models.Respons
 	b.requestChan<-models.Request[BotRequest]{ Type: t, Payload: data, Response: response }
 }
 
-func (b *BotManager) Stop() {
+func (b *BotManager) Stop(isStopped chan bool) {
 	b.requestListener.Stop()
 	b.botListener.Stop()
 	close(b.listenerChan)
 	ui.Log(ui.LevelInfo, "BotManager", "Stopped.")
+	isStopped <- true
 }
