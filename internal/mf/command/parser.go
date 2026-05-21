@@ -1,4 +1,4 @@
-package mf
+package command
 
 import (
 	"os"
@@ -9,40 +9,40 @@ import (
 	"github.com/whazzabii7/swarm/internal/ui" 
 )
 
-type CommandParser struct {
+type Parser struct {
 	// requestChan	chan models.MFRequest
 	CommandChan chan Command `json:"command_chan"`
 }
 
-func NewComandParser() *CommandParser {
-	return &CommandParser{
+func NewParser() *Parser {
+	return &Parser{
 		// requestChan: requests,
 		CommandChan: make(chan Command, 100),
 	}
 }
 
-func (c *CommandParser) RunShell() {
+func (p *Parser) RunShell() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
 		if !scanner.Scan() { break }
-		input := c.parse(scanner.Text())
+		input := p.parse(scanner.Text())
 		switch input.Type {
-		case CmdQuit:
-			c.CommandChan <- *input
+		case Quit:
+			p.CommandChan <- *input
 			return
 		default:
-			c.CommandChan <- *input
+			p.CommandChan <- *input
 		}
 	}
 }
 
-func (c * CommandParser) Stop(isStopped chan bool) {
-	close(c.CommandChan)
+func (p * Parser) Stop(isStopped chan bool) {
+	close(p.CommandChan)
 	ui.Log(ui.LevelInfo, "Commander", "Stopped.")
 	isStopped <- true
 }
 
-func (c *CommandParser) parse(cmdStr string) *Command {
+func (p *Parser) parse(cmdStr string) *Command {
 	cmd := strings.Split(cmdStr, " ")
 	return NewCommand(collectArgs(cmd))
 }

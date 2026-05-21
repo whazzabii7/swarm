@@ -1,4 +1,4 @@
-package mf
+package command
 
 import(
 	"fmt"
@@ -30,7 +30,7 @@ func NewArg(d []string, s bool) *Arg {
 
 func collectArgs(argStrings []string) (CommandType, map[Flag]Arg) {
 	if len(argStrings) == 0 {
-		return CmdPrintHelp, nil
+		return PrintHelp, nil
 	}
 
 	cmdType := StringToCommandType(argStrings[0])
@@ -47,7 +47,7 @@ func collectArgs(argStrings []string) (CommandType, map[Flag]Arg) {
 		if len(current) > 0 && current[0] == '-' && len(buffer) > 0 {
 			flagKey, arg, isInvalid := validateArg(cmdType, buffer)
 			if isInvalid {
-				return CmdPrintHelp, nil 
+				return PrintHelp, nil 
 			}
 			argsMap[flagKey] = *arg
 			buffer = buffer[:0] 
@@ -59,7 +59,7 @@ func collectArgs(argStrings []string) (CommandType, map[Flag]Arg) {
 	if len(buffer) > 0 {
 		flagKey, arg, isInvalid := validateArg(cmdType, buffer)
 		if isInvalid {
-			return CmdPrintHelp, nil
+			return PrintHelp, nil
 		}
 		argsMap[flagKey] = *arg
 	}
@@ -72,18 +72,18 @@ func validateArg(t CommandType, buffer []string) (Flag, *Arg, bool) {
 	data := buffer[1:]
 
 	cmdFlags := map[CommandType]map[Flag]int{
-		CmdListBlueprints: { FlagVerbose:0 },
-		CmdListInstances: { FlagVerbose:0 },
-		CmdListTasks: { FlagVerbose:0 },
-		CmdListenToBot: { FlagVerbose:0 },
-		CmdLoadTask: {},
-		CmdPrintDBTable: { FlagVerbose:0 },
-		CmdScanBotDir: { FlagPath:1 },
-		CmdShowOutput: { FlagVerbose:0 },
-		CmdSpawnBot: { FlagAlias:1 },
-		CmdStopBot: { FlagPID:1 },
-		CmdQuit: {},
-		CmdPrintHelp: { FlagVerbose:1 },
+		ListBlueprints: { FlagVerbose:0 },
+		ListInstances: { FlagVerbose:0 },
+		ListTasks: { FlagVerbose:0 },
+		ListenToBot: { FlagVerbose:0 },
+		LoadTask: {},
+		PrintDBTable: { FlagVerbose:0 },
+		ScanBotDir: { FlagPath:1 },
+		ShowOutput: { FlagVerbose:0 },
+		SpawnBot: { FlagAlias:1 },
+		StopBot: { FlagPID:1 },
+		Quit: {},
+		PrintHelp: { FlagVerbose:1 },
 	}
 
 	if allowedFlags, ok := cmdFlags[t]; ok {
@@ -117,3 +117,4 @@ func NewCommand(t CommandType,args map[Flag]Arg) *Command {
 		Args: args,
 	}
 }
+
