@@ -13,7 +13,7 @@ type BotListener struct {
 
 func NewBotListener(listen chan ListenerMessage) *BotListener {
 	return &BotListener{
-		botMessageChan: make(chan BotMessage),
+		botMessageChan: make(chan BotMessage, 100),
 		listenerChan: listen,
 	}
 }

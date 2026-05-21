@@ -17,7 +17,7 @@ type CommandParser struct {
 func NewComandParser() *CommandParser {
 	return &CommandParser{
 		// requestChan: requests,
-		CommandChan: make(chan Command),
+		CommandChan: make(chan Command, 100),
 	}
 }
 
@@ -29,7 +29,6 @@ func (c *CommandParser) RunShell() {
 		switch input.Type {
 		case CmdQuit:
 			c.CommandChan <- *input
-			c.Stop()
 			return
 		default:
 			c.CommandChan <- *input
@@ -37,9 +36,10 @@ func (c *CommandParser) RunShell() {
 	}
 }
 
-func (c * CommandParser) Stop() {
+func (c * CommandParser) Stop(isStopped chan bool) {
 	close(c.CommandChan)
 	ui.Log(ui.LevelInfo, "Commander", "Stopped.")
+	isStopped <- true
 }
 
 func (c *CommandParser) parse(cmdStr string) *Command {
