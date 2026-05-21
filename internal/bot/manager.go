@@ -37,7 +37,7 @@ type BotManager struct {
 	botListener BotListener				            // listens to requests from Bots
 }
 
-func NewBotManager(requests chan models.Request[models.MFRequest]) *BotManager {
+func NewManager(requests chan models.Request[models.MFRequest]) *BotManager {
 	rc := make(chan models.Request[BotRequest], 100)
 	lc := make(chan ListenerMessage, 100)
 	return &BotManager {
@@ -70,12 +70,17 @@ func (b *BotManager) Start(ctx context.Context, isStarted chan bool) {
 func (b *BotManager) handleMFRequest(ctx context.Context, msg ListenerMessage) {
 	switch msg.requestType {
 	case BRStartBot:
-		b.startBot(ctx, msg.payload.(models.BotBlueprint))
+		instance, err := b.startBot(ctx, msg.payload.(models.BotBlueprint))
+		msg.response<-models.Response{ Payload: models.Payload(instance), Err: err }
 	case BRStopBot:	
     case BRPingRequest:
 	case BRSyncBlueprints:
-		payload  := msg.payload.(struct {path string; ram map[string]models.BotBlueprint})
-		b.syncBlueprints(&payload.ram)
+		type syncArgs struct {
+			path string
+			ram map[string]models.BotBlueprint
+		}
+		payload  := msg.payload.(syncArgs)
+		b.syncBlueprints(payload.path, payload.ram)
 	}
 }
 
@@ -88,11 +93,11 @@ func (b *BotManager) wait(cond chan bool) {
 }
 
 func (b *BotManager) requestMainframe(request models.MFRequest, response chan models.Response) {
-	b.mfRequest <- models.Request[models.MFRequest]{ Type: request, Payload: nil, Response: response }
+	b.mfRequest <- models.Request[models.MFRequest]{ Type: request, Payload: models.Payload(nil), Response: response }
 }
 
 func (b *BotManager) Submit(t BotRequest, data any, response chan models.Response ) {
-	b.requestChan<-models.Request[BotRequest]{ Type: t, Payload: data, Response: response }
+	b.requestChan<-models.Request[BotRequest]{ Type: t, Payload: models.Payload(data), Response: response }
 }
 
 func (b *BotManager) Stop(isStopped chan bool) {
