@@ -1,43 +1,35 @@
 package models
 
-type AllowedPayloads interface {
-	string | BotBlueprint | BotInstance | []BotBlueprint
-}
-
-type payload struct {
+type Payload struct {
 	data any
 }
 
-func Payload(load any) payload {
-	return payload{ data: load }
+func WrapPayload(load any) Payload {
+	return Payload{data: load}
 }
 
-// only debuging, will not be in final build!
-func (p *payload) Unwrap() any {
-	return p.data
+func UnwrapPayload[T any](p Payload) (T, bool) {
+	fn, ok := p.data.(T)
+	return fn, ok
 }
 
-func castPayloadType[T AllowedPayloads](rPayload any) (T, bool) {
-	value, ok := rPayload.(T)
-	return value, ok
+// Prepare Payload for Wrapping with 1 Data Value
+func PreparePayload[T any](returnValue T) func() T {
+	return func() T {
+		return returnValue
+	}
 }
 
-func (p *payload) GetBluePrint() (BotBlueprint, bool) {
-	value, ok := castPayloadType[BotBlueprint](p.data)
-	return value, ok
+// Prepare Payload for Wrapping with 2 Data Value
+func PreparePayload2[T1 any, T2 any](returnValue1 T1, returnValue2 T2) func() (T1, T2) {
+	return func() (T1, T2) {
+		return returnValue1, returnValue2
+	}
 }
 
-func (p *payload) GetBluePrints() ([]BotBlueprint, bool) {
-	values, ok := castPayloadType[[]BotBlueprint](p.data)
-	return values, ok
-}
-
-func (p *payload) GetString() (string, bool) {
-	value, ok := castPayloadType[string](p.data)
-	return value, ok
-}
-
-func (p *payload) GetInstance() (BotInstance, bool) {
-	value, ok := castPayloadType[BotInstance](p.data)
-	return value, ok
+// Prepare Payload for Wrapping with 3 Data Value
+func PreparePayload3[T1 any, T2 any, T3 any](returnValue1 T1, returnValue2 T2, returnValue3 T3) func() (T1, T2, T3) {
+	return func() (T1, T2, T3) {
+		return returnValue1, returnValue2, returnValue3
+	}
 }
