@@ -6,24 +6,24 @@ import (
 	"time"
 	// "encoding/json"
 
-	"github.com/whazzabii7/swarm/internal/mf/command"
-	"github.com/whazzabii7/swarm/internal/db"
-	"github.com/whazzabii7/swarm/internal/ui"
 	"github.com/whazzabii7/swarm/internal/bot"
-	"github.com/whazzabii7/swarm/internal/tasker"
+	"github.com/whazzabii7/swarm/internal/db"
+	"github.com/whazzabii7/swarm/internal/mf/command"
 	"github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/tasker"
+	"github.com/whazzabii7/swarm/internal/ui"
 )
 
-
 type Mainframe struct {
-	dbpath string
+	dbpath      string
 	requestChan chan models.Request[models.MFRequest]
 
 	// Submodules
 	guardian *db.Guardian
-	manager *bot.BotManager
-	tasker  *tasker.TaskManager
-	cmder   *command.Parser
+	manager  *bot.BotManager
+	tasker   *tasker.TaskManager
+	cmder    *command.Parser
+	error    *ErrorHandler
 
 	// RAM-Memory (State)
 	blueprints map[string]models.BotBlueprint // Key: Alias
@@ -40,13 +40,14 @@ func NewMainframe() *Mainframe {
 	// base initialization needed for submodules
 	m := Mainframe{
 		requestChan: make(chan models.Request[models.MFRequest], 100),
-		dbpath: "./data/swarm.db",
-		blueprints: make(map[string]models.BotBlueprint),
-		instances: make(map[int]models.BotInstance),
+		dbpath:      "./data/swarm.db",
+		blueprints:  make(map[string]models.BotBlueprint),
+		instances:   make(map[int]models.BotInstance),
+		error:       &ErrorHandler{},
 	}
 
 	m.guardian = db.NewGuardian()
-	m.manager = bot.NewManager(m.requestChan)
+	m.manager = bot.NewManager(m.Submit)
 	m.tasker = tasker.NewTaskManager(m.requestChan)
 	m.cmder = command.NewParser()
 	return &m
@@ -65,7 +66,7 @@ func (m *Mainframe) Start(done chan bool) {
 	m.wait(isStarted)
 	go m.manager.Start(ctx, isStarted)
 	m.wait(isStarted)
-	m.scanBotDir("./bot")
+	m.scanBotDir("./bots")
 
 	go m.cmder.RunShell()
 
@@ -73,29 +74,53 @@ func (m *Mainframe) Start(done chan bool) {
 	ui.Log(ui.LevelInfo, "Mainframe", "[!] running. Waiting for instructions...")
 	for {
 		select {
-			case req := <-m.requestChan:
-				m.handleRequest(req)
-			case cmd := <-m.cmder.CommandChan:
-				if cmd.Type == command.Quit {
-					m.shutdown(done, cancel)
-					return
-				}
-				m.executeCommand(cmd)
-			case <-time.After(5*time.Second):
-				m.checkHealth()
+		case req := <-m.requestChan:
+			go m.handleRequest(req)
+		case cmd := <-m.cmder.CommandChan:
+			if cmd.Type == command.Quit {
+				m.shutdown(done, cancel)
+				return
+			}
+			go m.executeCommand(cmd)
+		case <-time.After(5 * time.Second):
+			go m.checkHealth()
 		}
 	}
 }
 
-func (m *Mainframe) wait(cond chan bool) { 
+func (m *Mainframe) Submit(t models.MFRequest, data any, response chan models.Response) {
+	m.requestChan <- models.NewRequest[models.MFRequest](t, data, response)
+}
+
+func (m *Mainframe) wait(cond chan bool) {
 	if <-cond {
 		return
 	}
 }
 
-func (m *Mainframe) handleRequest(req models.Request[models.MFRequest]) {}
+func (m *Mainframe) handleRequest(req models.Request[models.MFRequest]) {
+	switch req.Type {
+	case models.MFHandleError:
+		if getErr, ok := models.UnwrapPayload[func() error](req.Payload); ok {
+			err := getErr()
+			errPolicy := m.error.Analyze(err)
+			switch errPolicy.Severity {
+			case SeverityFatal:
+				ui.Logf(ui.LevelError, "Mainframe", "%s", errPolicy.Message)
+				m.cmder.EmergencyStop()
+			case SeverityRecover:
+				ui.Logf(ui.LevelError, "Mainframe", "%s", errPolicy.Message)
+				models.NewResponseErr(err).Submit(req.Response)
+			case SeverityReport:
+				ui.Logf(ui.LevelError, "Mainframe", "%s", errPolicy.Message)
+			case SeverityIgnore:
+				return
+			}
+		}
+	}
+}
 
-func (m *Mainframe) executeCommand(cmd command. Command) {
+func (m *Mainframe) executeCommand(cmd command.Command) {
 	switch cmd.Type {
 	case command.SpawnBot:
 		m.execSpawnBot(cmd)
@@ -135,5 +160,13 @@ func (m *Mainframe) shutdown(done chan bool, cancel context.CancelFunc) {
 	m.wait(isStopped)
 	go m.guardian.Stop(isStopped)
 	m.wait(isStopped)
-	done<-true
+	done <- true
+}
+
+func (m *Mainframe) getBlueprints() []models.BotBlueprint {
+	return make([]models.BotBlueprint, 0)
+}
+
+func (m *Mainframe) getInstances() []models.BotInstance {
+	return make([]models.BotInstance, 0)
 }
