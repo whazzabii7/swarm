@@ -1,8 +1,8 @@
 package tasker
 
 import (
-	"github.com/whazzabii7/swarm/internal/models" 
-	"github.com/whazzabii7/swarm/internal/ui" 
+	"github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/ui"
 )
 
 type TaskRequest models.RequestType
@@ -12,13 +12,13 @@ const (
 )
 
 type TaskManager struct {
-	mfRequest chan models.Request[models.MFRequest]
+	mfRequest   chan models.Request[models.MFRequest]
 	requestChan chan models.Request[TaskRequest]
 }
 
 func NewTaskManager(requests chan models.Request[models.MFRequest]) *TaskManager {
 	return &TaskManager{
-		mfRequest: requests,
+		mfRequest:   requests,
 		requestChan: make(chan models.Request[TaskRequest], 100),
 	}
 }

@@ -4,22 +4,22 @@ import (
 	"context"
 )
 
-type BotMessage struct {}
+type BotMessage struct{}
 
 type BotListener struct {
 	botMessageChan chan BotMessage
-	listenerChan chan ListenerMessage
+	listenerChan   chan ListenerMessage
 }
 
 func NewBotListener(listen chan ListenerMessage) *BotListener {
 	return &BotListener{
 		botMessageChan: make(chan BotMessage, 100),
-		listenerChan: listen,
+		listenerChan:   listen,
 	}
 }
 
 func (b *BotListener) Start(ctx context.Context, isStarted chan bool) {
-	isStarted<-true
+	isStarted <- true
 	for msg := range b.botMessageChan {
 		switch msg {
 		default:

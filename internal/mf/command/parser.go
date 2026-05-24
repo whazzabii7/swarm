@@ -1,12 +1,12 @@
 package command
 
 import (
-	"os"
 	"bufio"
+	"os"
 	"strings"
 
-	// "github.com/whazzabii7/swarm/internal/models" 
-	"github.com/whazzabii7/swarm/internal/ui" 
+	// "github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/ui"
 )
 
 type Parser struct {
@@ -24,7 +24,9 @@ func NewParser() *Parser {
 func (p *Parser) RunShell() {
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
-		if !scanner.Scan() { break }
+		if !scanner.Scan() {
+			break
+		}
 		input := p.parse(scanner.Text())
 		switch input.Type {
 		case Quit:
@@ -36,10 +38,14 @@ func (p *Parser) RunShell() {
 	}
 }
 
-func (p * Parser) Stop(isStopped chan bool) {
+func (p *Parser) Stop(isStopped chan bool) {
 	close(p.CommandChan)
 	ui.Log(ui.LevelInfo, "Commander", "Stopped.")
 	isStopped <- true
+}
+
+func (p *Parser) EmergencyStop() {
+	p.CommandChan <- *p.parse("quit")
 }
 
 func (p *Parser) parse(cmdStr string) *Command {

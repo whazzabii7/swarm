@@ -23,7 +23,7 @@ type LogEvent struct {
 type UIManager struct {
 	logChan     chan LogEvent
 	prompt      string
-	inputBuffer *strings.Builder 
+	inputBuffer *strings.Builder
 }
 
 var MainUI *UIManager
@@ -53,16 +53,15 @@ func Logf(level LogLevel, module, format string, args ...any) {
 	Log(level, module, fmt.Sprintf(format, args...))
 }
 
-
 func (ui *UIManager) routeAndPrintLoop(uiDone chan bool) {
 	for event := range ui.logChan {
-		
+
 		var prefix string
 		switch event.Level {
 		case LevelError:
-			prefix = "\x1b[31m[ERROR]\x1b[0m" 
+			prefix = "\x1b[31m[ERROR]\x1b[0m"
 		case LevelWarning:
-			prefix = "\x1b[33m[WARN]\x1b[0m" 
+			prefix = "\x1b[33m[WARN]\x1b[0m"
 		default:
 			prefix = fmt.Sprintf("[%s]", event.Module)
 		}

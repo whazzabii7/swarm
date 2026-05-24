@@ -7,25 +7,25 @@ import (
 )
 
 type RequestListener struct {
-	requestChan chan models.Request[BotRequest]
+	requestChan  chan models.Request[BotRequest]
 	listenerChan chan ListenerMessage
 }
 
 func NewRequestListener(request chan models.Request[BotRequest], listen chan ListenerMessage) *RequestListener {
 	return &RequestListener{
-		requestChan: request,
+		requestChan:  request,
 		listenerChan: listen,
 	}
 }
 
 func (r *RequestListener) Start(ctx context.Context, isStarted chan bool) {
-	isStarted<-true
+	isStarted <- true
 	for req := range r.requestChan {
-		r.listenerChan<-ListenerMessage{ 
-			source: ListenToMFRequest,
+		r.listenerChan <- ListenerMessage{
+			source:      ListenToMFRequest,
 			requestType: req.Type,
-			payload: req.Payload.Unwrap(),
-			response: req.Response,
+			payload:     req.Payload,
+			response:    req.Response,
 		}
 	}
 }

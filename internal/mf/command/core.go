@@ -1,29 +1,29 @@
 package command
 
-import(
+import (
 	"fmt"
 )
 
 type Flag [2]string
 
-var(
-	FlagPath    = Flag { "--path", "-p" }
-	FlagSource  = Flag { "--source", "-s" }
-	FlagVerbose = Flag { "--verbose", "-v" }
-	FlagID 		= Flag { "--id", "-i" }
-	FlagAlias   = Flag { "--alias", "-a" }
-	FlagPID     = Flag { "--pid" }
+var (
+	FlagPath    = Flag{"--path", "-p"}
+	FlagSource  = Flag{"--source", "-s"}
+	FlagVerbose = Flag{"--verbose", "-v"}
+	FlagID      = Flag{"--id", "-i"}
+	FlagAlias   = Flag{"--alias", "-a"}
+	FlagPID     = Flag{"--pid"}
+	FlagDefault = Flag{"--default", "-d"}
 )
 
-
 type Arg struct {
-	Data []string  `json:"data"`
+	Data  []string `json:"data"`
 	IsSet bool     `json:"is_set"`
 }
 
 func NewArg(d []string, s bool) *Arg {
 	return &Arg{
-		Data: d,
+		Data:  d,
 		IsSet: s,
 	}
 }
@@ -34,7 +34,7 @@ func collectArgs(argStrings []string) (CommandType, map[Flag]Arg) {
 	}
 
 	cmdType := StringToCommandType(argStrings[0])
-	
+
 	if len(argStrings) == 1 {
 		return cmdType, nil
 	}
@@ -47,12 +47,12 @@ func collectArgs(argStrings []string) (CommandType, map[Flag]Arg) {
 		if len(current) > 0 && current[0] == '-' && len(buffer) > 0 {
 			flagKey, arg, isInvalid := validateArg(cmdType, buffer)
 			if isInvalid {
-				return PrintHelp, nil 
+				return PrintHelp, nil
 			}
 			argsMap[flagKey] = *arg
-			buffer = buffer[:0] 
+			buffer = buffer[:0]
 		}
-		
+
 		buffer = append(buffer, current)
 	}
 
@@ -72,24 +72,24 @@ func validateArg(t CommandType, buffer []string) (Flag, *Arg, bool) {
 	data := buffer[1:]
 
 	cmdFlags := map[CommandType]map[Flag]int{
-		ListBlueprints: { FlagVerbose:0 },
-		ListInstances: { FlagVerbose:0 },
-		ListTasks: { FlagVerbose:0 },
-		ListenToBot: { FlagVerbose:0 },
-		LoadTask: {},
-		PrintDBTable: { FlagVerbose:0 },
-		ScanBotDir: { FlagPath:1 },
-		ShowOutput: { FlagVerbose:0 },
-		SpawnBot: { FlagAlias:1 },
-		StopBot: { FlagPID:1 },
-		Quit: {},
-		PrintHelp: { FlagVerbose:1 },
+		ListBlueprints: {FlagVerbose: 0},
+		ListInstances:  {FlagVerbose: 0},
+		ListTasks:      {FlagVerbose: 0},
+		ListenToBot:    {FlagVerbose: 0},
+		LoadTask:       {},
+		PrintDBTable:   {FlagVerbose: 0},
+		ScanBotDir:     {FlagPath: 1, FlagDefault: 0},
+		ShowOutput:     {FlagVerbose: 0},
+		SpawnBot:       {FlagAlias: 1},
+		StopBot:        {FlagPID: 1},
+		Quit:           {},
+		PrintHelp:      {FlagVerbose: 1},
 	}
 
 	if allowedFlags, ok := cmdFlags[t]; ok {
 		for flagKey, paramLen := range allowedFlags {
 			if (flagKey[0] != "" && flagKey[0] == userInput) || (flagKey[1] != "" && flagKey[1] == userInput) {
-				
+
 				if len(data) > paramLen {
 					return Flag{}, NewArg([]string{fmt.Sprintf("Too many Arguments for %s %s", t.String(), userInput)}, false), true
 				}
@@ -102,19 +102,18 @@ func validateArg(t CommandType, buffer []string) (Flag, *Arg, bool) {
 			}
 		}
 	}
-	
+
 	return Flag{}, NewArg([]string{fmt.Sprintf("Flag %s for Command %s not found!", userInput, t.String())}, false), true
 }
 
 type Command struct {
-	Type CommandType `json:"command_type"`
-	Args map[Flag]Arg       `json:"args"`
+	Type CommandType  `json:"command_type"`
+	Args map[Flag]Arg `json:"args"`
 }
 
-func NewCommand(t CommandType,args map[Flag]Arg) *Command {
+func NewCommand(t CommandType, args map[Flag]Arg) *Command {
 	return &Command{
 		Type: t,
 		Args: args,
 	}
 }
-

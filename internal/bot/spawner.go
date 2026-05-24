@@ -1,9 +1,9 @@
 package bot
 
-import(
-	"fmt"
+import (
 	"bufio"
 	"context"
+	"fmt"
 	"os/exec"
 	"time"
 
@@ -57,13 +57,13 @@ func (m *BotManager) startBot(ctx context.Context, bp models.BotBlueprint) (*mod
 		for scanner.Scan() {
 			text := scanner.Text()
 			ui.Logf(ui.LevelInfo, fmt.Sprintf("BOT:%s:DATA", bp.Alias), "%s", text)
-			
+
 			// HIER kommt später die Brücke zum BotListener hin!
 		}
 	}()
 	// -----------------------------------------------------
 
-	go func(){
+	go func() {
 		cmd.Wait()
 		ui.Logf(ui.LevelInfo, "BotManager", "Bot %s (PID %d) stopped.\n", instance.Alias, instance.PID)
 	}()

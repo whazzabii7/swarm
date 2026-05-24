@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"log"
 
-	_ "github.com/glebarez/go-sqlite" 
+	_ "github.com/glebarez/go-sqlite"
 	"github.com/whazzabii7/swarm/internal/ui"
 )
 
@@ -50,5 +50,5 @@ func InitDB(ctx context.Context, dbPath string) {
 	if err != nil {
 		log.Fatalf("[-] Fehler beim Erstellen der Tabellen: %v", err)
 	}
-	ui.Log(ui.LevelInfo, "DB", "[+] Swarm database successfully initialized.") 
+	ui.Log(ui.LevelInfo, "DB", "[+] Swarm database successfully initialized.")
 }

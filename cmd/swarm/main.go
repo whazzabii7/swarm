@@ -26,5 +26,5 @@ func main() {
 	<-done
 	ui.MainUI.Stop()
 	<-uiDone
-    fmt.Println(">>> successfully shut down.]")
+	fmt.Println(">>> successfully shut down.]")
 }
