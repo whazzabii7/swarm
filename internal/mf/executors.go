@@ -7,31 +7,32 @@ import (
 	"github.com/whazzabii7/swarm/internal/db"
 	"github.com/whazzabii7/swarm/internal/mf/command"
 	"github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/rpr"
 	"github.com/whazzabii7/swarm/internal/ui"
 )
 
 func (m *Mainframe) execSpawnBot(cmd command.Command) {
-	responseCh := make(chan models.Response)
+	responseCh := make(chan rpr.Response)
 	if arg, ok := cmd.Args[command.FlagAlias]; ok {
 		var getBlueprint func() models.BotBlueprint
 		if data, ok := m.blueprints[arg.Data[0]]; ok {
-			getBlueprint = models.PreparePayload(data)
+			getBlueprint = rpr.PreparePayload(data)
 		} else {
-			models.PrepareSubmit[db.DBRequest, string](m.guardian.Submit, db.DBGetBlueprint, arg.Data[0], responseCh)
-			var response models.Response
-			if response, ok = models.CheckResponse(responseCh); !ok {
+			rpr.PrepareSubmit[db.DBRequest, string](m.guardian.Submit, db.DBGetBlueprint, arg.Data[0], responseCh)
+			var response rpr.Response
+			if response, ok = rpr.CheckResponse(responseCh); !ok {
 				err := fmt.Errorf("%w: %v", ErrExecFailed, response.Err)
-				models.PrepareSubmit[models.MFRequest, error](m.Submit, models.MFHandleError, err, nil)
+				rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
 			}
-			if getBlueprint, ok = models.UnwrapPayload[func() models.BotBlueprint](response.Payload); ok {
+			if getBlueprint, ok = rpr.UnwrapPayload[func() models.BotBlueprint](response.Payload); ok {
 				ui.Log(ui.LevelDebug, "DEBUG", "Hier Hängts") // <--- getBlueprint wird hier nicht beschrieben, ok ist false an dieser stelle
 				m.blueprints[arg.Data[0]] = getBlueprint()    // das bedeutet UnwrapPayload gibt keine funktion zurück, der Cast schlägt fehl
 			}
 		}
 		go m.manager.Submit(bot.BRStartBot, getBlueprint, responseCh)
-		if response, ok := models.CheckResponse(responseCh); !ok {
+		if response, ok := rpr.CheckResponse(responseCh); !ok {
 			err := fmt.Errorf("%w: %v", ErrExecFailed, response.Err)
-			models.PrepareSubmit[models.MFRequest, error](m.Submit, models.MFHandleError, err, nil)
+			rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
 		}
 	}
 }
@@ -51,34 +52,34 @@ func (m *Mainframe) execScanBotDir(cmd command.Command) {
 		return
 	}
 	err := fmt.Errorf("%w scanBotDir: %w", ErrExecFailed, ErrWrongArguments)
-	models.PrepareSubmit[models.MFRequest, error](m.Submit, models.MFHandleError, err, nil)
+	rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
 }
 
 func (m *Mainframe) scanBotDir(path string) {
-	response := make(chan models.Response)
+	response := make(chan rpr.Response)
 	ui.Log(ui.LevelInfo, "Mainframe", "Send request to DB-Guardian")
-	go models.PrepareSubmit2[bot.BotRequest, string, []models.BotBlueprint](m.manager.Submit, bot.BRSyncBlueprints, path, m.getBlueprints(), response)
+	go rpr.PrepareSubmit2[bot.BotRequest, string, []models.BotBlueprint](m.manager.Submit, bot.BRSyncBlueprints, path, m.getBlueprints(), response)
 	go func() {
-		var blueprintsResponse models.Response
+		var blueprintsResponse rpr.Response
 		var ok bool
-		if blueprintsResponse, ok = models.CheckResponse(response); !ok {
+		if blueprintsResponse, ok = rpr.CheckResponse(response); !ok {
 			err := fmt.Errorf("%w: %v", ErrExecFailed, blueprintsResponse.Err)
-			models.PrepareSubmit[models.MFRequest, error](m.Submit, models.MFHandleError, err, nil)
+			rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
 			return
 		}
 		var getBlueprints func() []models.BotBlueprint
-		if getBlueprints, ok = models.UnwrapPayload[func() []models.BotBlueprint](blueprintsResponse.Payload); !ok {
+		if getBlueprints, ok = rpr.UnwrapPayload[func() []models.BotBlueprint](blueprintsResponse.Payload); !ok {
 			err := fmt.Errorf("%w: %w", ErrExecFailed, ErrCorruptedData)
-			models.PrepareSubmit[models.MFRequest, error](m.Submit, models.MFHandleError, err, nil)
+			rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
 			return
 		}
 		go m.guardian.Submit(db.DBCheckBlueprints, getBlueprints, response)
-		if blueprintsResponse, ok = models.CheckResponse(response); !ok {
+		if blueprintsResponse, ok = rpr.CheckResponse(response); !ok {
 			err := fmt.Errorf("%w: %v", ErrExecFailed, blueprintsResponse.Err)
-			models.PrepareSubmit[models.MFRequest, error](m.Submit, models.MFHandleError, err, nil)
+			rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
 			return
 		}
-		m.Submit(models.MFUpdateBlueprints, getBlueprints, nil)
+		m.Submit(rpr.MFUpdateBlueprints, getBlueprints, nil)
 	}()
 }
 

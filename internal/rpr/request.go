@@ -1,4 +1,4 @@
-package models
+package rpr
 
 type RequestType int
 type RequestConstraint interface{ ~int }

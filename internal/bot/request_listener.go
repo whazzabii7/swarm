@@ -3,15 +3,15 @@ package bot
 import (
 	"context"
 
-	"github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/rpr"
 )
 
 type RequestListener struct {
-	requestChan  chan models.Request[BotRequest]
+	requestChan  chan rpr.Request[BotRequest]
 	listenerChan chan ListenerMessage
 }
 
-func NewRequestListener(request chan models.Request[BotRequest], listen chan ListenerMessage) *RequestListener {
+func NewRequestListener(request chan rpr.Request[BotRequest], listen chan ListenerMessage) *RequestListener {
 	return &RequestListener{
 		requestChan:  request,
 		listenerChan: listen,

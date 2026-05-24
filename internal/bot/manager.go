@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/rpr"
 	"github.com/whazzabii7/swarm/internal/ui"
 )
 
@@ -14,7 +15,7 @@ const (
 	ListenToBots
 )
 
-type BotRequest models.RequestType
+type BotRequest rpr.RequestType
 
 const (
 	BRPingRequest BotRequest = iota + 200
@@ -26,20 +27,20 @@ const (
 type ListenerMessage struct {
 	source      ListenerType
 	requestType any
-	payload     models.Payload
-	response    chan models.Response
+	payload     rpr.Payload
+	response    chan rpr.Response
 }
 
 type BotManager struct {
-	mfRequest       models.MFSubmit                 // <-chan, for sending requests to Mainframe
-	requestChan     chan models.Request[BotRequest] // chan<-, for mainfrfame access to requestListener
+	mfRequest       rpr.MFSubmit                 // <-chan, for sending requests to Mainframe
+	requestChan     chan rpr.Request[BotRequest] // chan<-, for mainfrfame access to requestListener
 	listenerChan    chan ListenerMessage            // chan<-, for getting requests
 	requestListener RequestListener                 // listens to requests from Mainframe
 	botListener     BotListener                     // listens to requests from Bots
 }
 
-func NewManager(requests models.MFSubmit) *BotManager {
-	rc := make(chan models.Request[BotRequest], 100)
+func NewManager(requests rpr.MFSubmit) *BotManager {
+	rc := make(chan rpr.Request[BotRequest], 100)
 	lc := make(chan ListenerMessage, 100)
 	return &BotManager{
 		mfRequest:       requests,
@@ -71,19 +72,19 @@ func (b *BotManager) Start(ctx context.Context, isStarted chan bool) {
 func (b *BotManager) handleMFRequest(ctx context.Context, msg ListenerMessage) {
 	switch msg.requestType {
 	case BRStartBot:
-		if getBlueprint, ok := models.UnwrapPayload[func() models.BotBlueprint](msg.payload); ok {
+		if getBlueprint, ok := rpr.UnwrapPayload[func() models.BotBlueprint](msg.payload); ok {
 			bp := getBlueprint()
 			instance, err := b.startBot(ctx, bp)
-			responseData := models.NewResponse[models.BotInstance](*instance, err)
+			responseData := rpr.NewResponse[models.BotInstance](*instance, err)
 			responseData.Submit(msg.response)
-			models.NewResponse[models.BotInstance](*instance, err).Submit(msg.response)
+			rpr.NewResponse[models.BotInstance](*instance, err).Submit(msg.response)
 		}
 	case BRStopBot:
 	case BRPingRequest:
 	case BRSyncBlueprints:
-		if getFuncArgs, ok := models.UnwrapPayload[func() (string, []models.BotBlueprint)](msg.payload); ok {
+		if getFuncArgs, ok := rpr.UnwrapPayload[func() (string, []models.BotBlueprint)](msg.payload); ok {
 			blueprints, err := b.syncBlueprints(getFuncArgs())
-			models.NewResponse[[]models.BotBlueprint](blueprints, err).Submit(msg.response)
+			rpr.NewResponse[[]models.BotBlueprint](blueprints, err).Submit(msg.response)
 		}
 	}
 }
@@ -96,8 +97,8 @@ func (b *BotManager) wait(cond chan bool) {
 	}
 }
 
-func (b *BotManager) Submit(t BotRequest, data any, response chan models.Response) {
-	b.requestChan <- models.NewRequest[BotRequest](t, data, response)
+func (b *BotManager) Submit(t BotRequest, data any, response chan rpr.Response) {
+	b.requestChan <- rpr.NewRequest[BotRequest](t, data, response)
 }
 
 func (b *BotManager) Stop(isStopped chan bool) {

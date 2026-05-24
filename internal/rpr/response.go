@@ -1,4 +1,4 @@
-package models
+package rpr
 
 type Response struct {
 	Payload Payload `json:"payload"`

@@ -1,4 +1,4 @@
-package models
+package rpr
 
 type Payload struct {
 	data any

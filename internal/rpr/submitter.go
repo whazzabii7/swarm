@@ -1,4 +1,4 @@
-package models
+package rpr
 
 func PrepareSubmit[R RequestConstraint, T any](
 	submitFn func(R, any, chan Response),

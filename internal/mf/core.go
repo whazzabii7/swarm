@@ -10,13 +10,14 @@ import (
 	"github.com/whazzabii7/swarm/internal/db"
 	"github.com/whazzabii7/swarm/internal/mf/command"
 	"github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/rpr"
 	"github.com/whazzabii7/swarm/internal/tasker"
 	"github.com/whazzabii7/swarm/internal/ui"
 )
 
 type Mainframe struct {
 	dbpath      string
-	requestChan chan models.Request[models.MFRequest]
+	requestChan chan rpr.Request[rpr.MFRequest]
 
 	// Submodules
 	guardian *db.Guardian
@@ -39,7 +40,7 @@ func NewMainframe() *Mainframe {
 	// initializing request channel and Mainframe "RAM"
 	// base initialization needed for submodules
 	m := Mainframe{
-		requestChan: make(chan models.Request[models.MFRequest], 100),
+		requestChan: make(chan rpr.Request[rpr.MFRequest], 100),
 		dbpath:      "./data/swarm.db",
 		blueprints:  make(map[string]models.BotBlueprint),
 		instances:   make(map[int]models.BotInstance),
@@ -88,8 +89,8 @@ func (m *Mainframe) Start(done chan bool) {
 	}
 }
 
-func (m *Mainframe) Submit(t models.MFRequest, data any, response chan models.Response) {
-	m.requestChan <- models.NewRequest[models.MFRequest](t, data, response)
+func (m *Mainframe) Submit(t rpr.MFRequest, data any, response chan rpr.Response) {
+	m.requestChan <- rpr.NewRequest[rpr.MFRequest](t, data, response)
 }
 
 func (m *Mainframe) wait(cond chan bool) {
@@ -98,10 +99,10 @@ func (m *Mainframe) wait(cond chan bool) {
 	}
 }
 
-func (m *Mainframe) handleRequest(req models.Request[models.MFRequest]) {
+func (m *Mainframe) handleRequest(req rpr.Request[rpr.MFRequest]) {
 	switch req.Type {
-	case models.MFHandleError:
-		if getErr, ok := models.UnwrapPayload[func() error](req.Payload); ok {
+	case rpr.MFHandleError:
+		if getErr, ok := rpr.UnwrapPayload[func() error](req.Payload); ok {
 			err := getErr()
 			errPolicy := m.error.Analyze(err)
 			switch errPolicy.Severity {
@@ -110,7 +111,7 @@ func (m *Mainframe) handleRequest(req models.Request[models.MFRequest]) {
 				m.cmder.EmergencyStop()
 			case SeverityRecover:
 				ui.Logf(ui.LevelError, "Mainframe", "%s", errPolicy.Message)
-				models.NewResponseErr(err).Submit(req.Response)
+				rpr.NewResponseErr(err).Submit(req.Response)
 			case SeverityReport:
 				ui.Logf(ui.LevelError, "Mainframe", "%s", errPolicy.Message)
 			case SeverityIgnore:
