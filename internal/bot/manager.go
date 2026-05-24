@@ -3,14 +3,15 @@ package bot
 import (
 	"context"
 
-	"github.com/whazzabii7/swarm/internal/models" 
-	"github.com/whazzabii7/swarm/internal/ui" 
+	"github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/ui"
 )
 
 type ListenerType int
+
 const (
 	ListenToMFRequest ListenerType = iota
-	ListenToBots	
+	ListenToBots
 )
 
 type BotRequest models.RequestType
@@ -23,29 +24,29 @@ const (
 )
 
 type ListenerMessage struct {
-	source ListenerType
+	source      ListenerType
 	requestType any
-	payload any
-	response chan models.Response
+	payload     models.Payload
+	response    chan models.Response
 }
 
 type BotManager struct {
-	mfRequest chan models.Request[models.MFRequest] // <-chan, for sending requests to Mainframe
-	requestChan chan models.Request[BotRequest]     // chan<-, for mainfrfame access to requestListener
-	listenerChan chan ListenerMessage               // chan<-, for getting requests
+	mfRequest       models.MFSubmit                 // <-chan, for sending requests to Mainframe
+	requestChan     chan models.Request[BotRequest] // chan<-, for mainfrfame access to requestListener
+	listenerChan    chan ListenerMessage            // chan<-, for getting requests
 	requestListener RequestListener                 // listens to requests from Mainframe
-	botListener BotListener				            // listens to requests from Bots
+	botListener     BotListener                     // listens to requests from Bots
 }
 
-func NewManager(requests chan models.Request[models.MFRequest]) *BotManager {
+func NewManager(requests models.MFSubmit) *BotManager {
 	rc := make(chan models.Request[BotRequest], 100)
 	lc := make(chan ListenerMessage, 100)
-	return &BotManager {
-		mfRequest: requests,
-		requestChan: rc,
-		listenerChan: lc,
+	return &BotManager{
+		mfRequest:       requests,
+		requestChan:     rc,
+		listenerChan:    lc,
 		requestListener: *NewRequestListener(rc, lc),
-		botListener: *NewBotListener(lc),
+		botListener:     *NewBotListener(lc),
 	}
 }
 
@@ -55,7 +56,7 @@ func (b *BotManager) Start(ctx context.Context, isStarted chan bool) {
 	b.wait(isSubStarted)
 	go b.botListener.Start(ctx, isSubStarted)
 	b.wait(isSubStarted)
-	isStarted<-true
+	isStarted <- true
 
 	for req := range b.listenerChan {
 		switch req.source {
@@ -70,17 +71,20 @@ func (b *BotManager) Start(ctx context.Context, isStarted chan bool) {
 func (b *BotManager) handleMFRequest(ctx context.Context, msg ListenerMessage) {
 	switch msg.requestType {
 	case BRStartBot:
-		instance, err := b.startBot(ctx, msg.payload.(models.BotBlueprint))
-		msg.response<-models.Response{ Payload: models.Payload(instance), Err: err }
-	case BRStopBot:	
-    case BRPingRequest:
-	case BRSyncBlueprints:
-		type syncArgs struct {
-			path string
-			ram map[string]models.BotBlueprint
+		if getBlueprint, ok := models.UnwrapPayload[func() models.BotBlueprint](msg.payload); ok {
+			bp := getBlueprint()
+			instance, err := b.startBot(ctx, bp)
+			responseData := models.NewResponse[models.BotInstance](*instance, err)
+			responseData.Submit(msg.response)
+			models.NewResponse[models.BotInstance](*instance, err).Submit(msg.response)
 		}
-		payload  := msg.payload.(syncArgs)
-		b.syncBlueprints(payload.path, payload.ram)
+	case BRStopBot:
+	case BRPingRequest:
+	case BRSyncBlueprints:
+		if getFuncArgs, ok := models.UnwrapPayload[func() (string, []models.BotBlueprint)](msg.payload); ok {
+			blueprints, err := b.syncBlueprints(getFuncArgs())
+			models.NewResponse[[]models.BotBlueprint](blueprints, err).Submit(msg.response)
+		}
 	}
 }
 
@@ -92,12 +96,8 @@ func (b *BotManager) wait(cond chan bool) {
 	}
 }
 
-func (b *BotManager) requestMainframe(request models.MFRequest, response chan models.Response) {
-	b.mfRequest <- models.Request[models.MFRequest]{ Type: request, Payload: models.Payload(nil), Response: response }
-}
-
-func (b *BotManager) Submit(t BotRequest, data any, response chan models.Response ) {
-	b.requestChan<-models.Request[BotRequest]{ Type: t, Payload: models.Payload(data), Response: response }
+func (b *BotManager) Submit(t BotRequest, data any, response chan models.Response) {
+	b.requestChan <- models.NewRequest[BotRequest](t, data, response)
 }
 
 func (b *BotManager) Stop(isStopped chan bool) {

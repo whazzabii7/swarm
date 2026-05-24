@@ -2,17 +2,17 @@ package bot
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/whazzabii7/swarm/internal/ui"
 	"github.com/whazzabii7/swarm/internal/models"
+	"github.com/whazzabii7/swarm/internal/ui"
 )
 
-func (m *BotManager) getBotHeader(path string) ( *models.BotBlueprint, error ) { 
+func (m *BotManager) getBotHeader(path string) (*models.BotBlueprint, error) {
 	cmd := exec.Command(path, "--swarm-info")
 	output, err := cmd.Output()
 	if err != nil {
@@ -26,23 +26,27 @@ func (m *BotManager) getBotHeader(path string) ( *models.BotBlueprint, error ) {
 
 	bp.Path = path
 	bp.LastScan = time.Now().UTC().Truncate(time.Second)
-	return &bp, nil 
+	return &bp, nil
 }
 
-func (m *BotManager) syncBlueprints(path string, blueprints map[string]models.BotBlueprint ) error {
+func (m *BotManager) syncBlueprints(path string, blueprints []models.BotBlueprint) ([]models.BotBlueprint, error) {
 	files, err := os.ReadDir(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, file := range files {
 		// ignoring folder and non binaries
-		if file.IsDir() { continue }
+		if file.IsDir() {
+			continue
+		}
 
 		info, err := file.Info()
-		if err != nil { continue }
+		if err != nil {
+			continue
+		}
 
-		if !( strings.HasSuffix(file.Name(), ".exe") || info.Mode().Perm()&0111 != 0 ) {
+		if !(strings.HasSuffix(file.Name(), ".exe") || info.Mode().Perm()&0111 != 0) {
 			continue
 		}
 		path := filepath.Join("./bots", file.Name())
@@ -52,7 +56,7 @@ func (m *BotManager) syncBlueprints(path string, blueprints map[string]models.Bo
 			ui.Logf(ui.LevelError, "BotManager", "Header of %s couldn't be read: %v\n", file.Name(), err)
 			continue
 		}
-		blueprints[blueprint.Alias] = *blueprint
+		blueprints = append(blueprints, *blueprint)
 	}
-	return nil
+	return blueprints, nil
 }
