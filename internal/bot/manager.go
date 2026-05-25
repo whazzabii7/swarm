@@ -28,26 +28,26 @@ type ListenerMessage struct {
 	source      ListenerType
 	requestType any
 	payload     rpr.Payload
-	response    chan rpr.Response
+	response    chan *rpr.Response
 }
 
 type BotManager struct {
-	mfRequest       rpr.MFSubmit                 // <-chan, for sending requests to Mainframe
-	requestChan     chan rpr.Request[BotRequest] // chan<-, for mainfrfame access to requestListener
-	listenerChan    chan ListenerMessage            // chan<-, for getting requests
-	requestListener RequestListener                 // listens to requests from Mainframe
-	botListener     BotListener                     // listens to requests from Bots
+	mfRequest       rpr.MFSubmit                  // <-chan, for sending requests to Mainframe
+	requestChan     chan *rpr.Request[BotRequest] // chan<-, for mainfrfame access to requestListener
+	listenerChan    chan ListenerMessage          // chan<-, for getting requests
+	requestListener *RequestListener              // listens to requests from Mainframe
+	botListener     *BotListener                  // listens to requests from Bots
 }
 
 func NewManager(requests rpr.MFSubmit) *BotManager {
-	rc := make(chan rpr.Request[BotRequest], 100)
+	rc := make(chan *rpr.Request[BotRequest], 100)
 	lc := make(chan ListenerMessage, 100)
 	return &BotManager{
 		mfRequest:       requests,
 		requestChan:     rc,
 		listenerChan:    lc,
-		requestListener: *NewRequestListener(rc, lc),
-		botListener:     *NewBotListener(lc),
+		requestListener: NewRequestListener(rc, lc),
+		botListener:     NewBotListener(lc),
 	}
 }
 
@@ -73,8 +73,7 @@ func (b *BotManager) handleMFRequest(ctx context.Context, msg ListenerMessage) {
 	switch msg.requestType {
 	case BRStartBot:
 		if getBlueprint, ok := rpr.UnwrapPayload[func() models.BotBlueprint](msg.payload); ok {
-			bp := getBlueprint()
-			instance, err := b.startBot(ctx, bp)
+			instance, err := b.startBot(ctx, getBlueprint())
 			responseData := rpr.NewResponse[models.BotInstance](*instance, err)
 			responseData.Submit(msg.response)
 			rpr.NewResponse[models.BotInstance](*instance, err).Submit(msg.response)
@@ -97,7 +96,7 @@ func (b *BotManager) wait(cond chan bool) {
 	}
 }
 
-func (b *BotManager) Submit(t BotRequest, data any, response chan rpr.Response) {
+func (b *BotManager) Submit(t BotRequest, data any, response chan *rpr.Response) {
 	b.requestChan <- rpr.NewRequest[BotRequest](t, data, response)
 }
 

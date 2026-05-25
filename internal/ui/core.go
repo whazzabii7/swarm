@@ -62,6 +62,8 @@ func (ui *UIManager) routeAndPrintLoop(uiDone chan bool) {
 			prefix = "\x1b[31m[ERROR]\x1b[0m"
 		case LevelWarning:
 			prefix = "\x1b[33m[WARN]\x1b[0m"
+		case LevelDebug:
+			prefix = fmt.Sprintf("\x1b[32m[%s]\x1b[0m", event.Module)
 		default:
 			prefix = fmt.Sprintf("[%s]", event.Module)
 		}
@@ -79,4 +81,8 @@ func (ui *UIManager) writeToTerminal(msg string) {
 	fmt.Println(msg)
 
 	fmt.Print(ui.prompt)
+}
+
+func Debug(str string, args ...any) {
+	Log(LevelDebug, "DEBUG", fmt.Sprintf(str, args))
 }

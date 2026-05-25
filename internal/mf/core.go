@@ -17,7 +17,7 @@ import (
 
 type Mainframe struct {
 	dbpath      string
-	requestChan chan rpr.Request[rpr.MFRequest]
+	requestChan chan *rpr.Request[rpr.MFRequest]
 
 	// Submodules
 	guardian *db.Guardian
@@ -40,7 +40,7 @@ func NewMainframe() *Mainframe {
 	// initializing request channel and Mainframe "RAM"
 	// base initialization needed for submodules
 	m := Mainframe{
-		requestChan: make(chan rpr.Request[rpr.MFRequest], 100),
+		requestChan: make(chan *rpr.Request[rpr.MFRequest], 100),
 		dbpath:      "./data/swarm.db",
 		blueprints:  make(map[string]models.BotBlueprint),
 		instances:   make(map[int]models.BotInstance),
@@ -49,7 +49,7 @@ func NewMainframe() *Mainframe {
 
 	m.guardian = db.NewGuardian()
 	m.manager = bot.NewManager(m.Submit)
-	m.tasker = tasker.NewTaskManager(m.requestChan)
+	m.tasker = tasker.NewTaskManager(m.Submit)
 	m.cmder = command.NewParser()
 	return &m
 }
@@ -89,7 +89,7 @@ func (m *Mainframe) Start(done chan bool) {
 	}
 }
 
-func (m *Mainframe) Submit(t rpr.MFRequest, data any, response chan rpr.Response) {
+func (m *Mainframe) Submit(t rpr.MFRequest, data any, response chan *rpr.Response) {
 	m.requestChan <- rpr.NewRequest[rpr.MFRequest](t, data, response)
 }
 
@@ -99,7 +99,7 @@ func (m *Mainframe) wait(cond chan bool) {
 	}
 }
 
-func (m *Mainframe) handleRequest(req rpr.Request[rpr.MFRequest]) {
+func (m *Mainframe) handleRequest(req *rpr.Request[rpr.MFRequest]) {
 	switch req.Type {
 	case rpr.MFHandleError:
 		if getErr, ok := rpr.UnwrapPayload[func() error](req.Payload); ok {

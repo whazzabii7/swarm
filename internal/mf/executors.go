@@ -12,21 +12,20 @@ import (
 )
 
 func (m *Mainframe) execSpawnBot(cmd command.Command) {
-	responseCh := make(chan rpr.Response)
+	responseCh := make(chan *rpr.Response)
 	if arg, ok := cmd.Args[command.FlagAlias]; ok {
 		var getBlueprint func() models.BotBlueprint
 		if data, ok := m.blueprints[arg.Data[0]]; ok {
 			getBlueprint = rpr.PreparePayload(data)
 		} else {
 			rpr.PrepareSubmit[db.DBRequest, string](m.guardian.Submit, db.DBGetBlueprint, arg.Data[0], responseCh)
-			var response rpr.Response
+			var response *rpr.Response
 			if response, ok = rpr.CheckResponse(responseCh); !ok {
 				err := fmt.Errorf("%w: %v", ErrExecFailed, response.Err)
 				rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
 			}
 			if getBlueprint, ok = rpr.UnwrapPayload[func() models.BotBlueprint](response.Payload); ok {
-				ui.Log(ui.LevelDebug, "DEBUG", "Hier Hängts") // <--- getBlueprint wird hier nicht beschrieben, ok ist false an dieser stelle
-				m.blueprints[arg.Data[0]] = getBlueprint()    // das bedeutet UnwrapPayload gibt keine funktion zurück, der Cast schlägt fehl
+				m.blueprints[arg.Data[0]] = getBlueprint()
 			}
 		}
 		go m.manager.Submit(bot.BRStartBot, getBlueprint, responseCh)
@@ -38,9 +37,9 @@ func (m *Mainframe) execSpawnBot(cmd command.Command) {
 }
 
 func (m *Mainframe) execListBlueprints(cmd command.Command) {}
-func (m *Mainframe) execListInstances(cmd command.Command) {}
-func (m *Mainframe) execListTasks(cmd command.Command) {}
-func (m *Mainframe) execStopBot(cmd command.Command) {}
+func (m *Mainframe) execListInstances(cmd command.Command)  {}
+func (m *Mainframe) execListTasks(cmd command.Command)      {}
+func (m *Mainframe) execStopBot(cmd command.Command)        {}
 
 func (m *Mainframe) execScanBotDir(cmd command.Command) {
 	if arg, ok := cmd.Args[command.FlagPath]; ok {
@@ -56,11 +55,11 @@ func (m *Mainframe) execScanBotDir(cmd command.Command) {
 }
 
 func (m *Mainframe) scanBotDir(path string) {
-	response := make(chan rpr.Response)
+	response := make(chan *rpr.Response)
 	ui.Log(ui.LevelInfo, "Mainframe", "Send request to DB-Guardian")
 	go rpr.PrepareSubmit2[bot.BotRequest, string, []models.BotBlueprint](m.manager.Submit, bot.BRSyncBlueprints, path, m.getBlueprints(), response)
 	go func() {
-		var blueprintsResponse rpr.Response
+		var blueprintsResponse *rpr.Response
 		var ok bool
 		if blueprintsResponse, ok = rpr.CheckResponse(response); !ok {
 			err := fmt.Errorf("%w: %v", ErrExecFailed, blueprintsResponse.Err)
@@ -83,9 +82,9 @@ func (m *Mainframe) scanBotDir(path string) {
 	}()
 }
 
-func (m *Mainframe) execLoadTask(cmd command.Command) {}
-func (m *Mainframe) execListenToBot(cmd command.Command) {}
-func (m *Mainframe) execShowOutput(cmd command.Command) {}
+func (m *Mainframe) execLoadTask(cmd command.Command)     {}
+func (m *Mainframe) execListenToBot(cmd command.Command)  {}
+func (m *Mainframe) execShowOutput(cmd command.Command)   {}
 func (m *Mainframe) execPrintDBTable(cmd command.Command) {}
 
 func (m *Mainframe) execPrintHelp(cmd command.Command) {

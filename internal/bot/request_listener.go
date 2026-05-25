@@ -7,11 +7,11 @@ import (
 )
 
 type RequestListener struct {
-	requestChan  chan rpr.Request[BotRequest]
+	requestChan  chan *rpr.Request[BotRequest]
 	listenerChan chan ListenerMessage
 }
 
-func NewRequestListener(request chan rpr.Request[BotRequest], listen chan ListenerMessage) *RequestListener {
+func NewRequestListener(request chan *rpr.Request[BotRequest], listen chan ListenerMessage) *RequestListener {
 	return &RequestListener{
 		requestChan:  request,
 		listenerChan: listen,

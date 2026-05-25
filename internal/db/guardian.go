@@ -20,12 +20,12 @@ const (
 )
 
 type Guardian struct {
-	requestChan chan rpr.Request[DBRequest]
+	requestChan chan *rpr.Request[DBRequest]
 }
 
 func NewGuardian() *Guardian {
 	return &Guardian{
-		requestChan: make(chan rpr.Request[DBRequest], 100),
+		requestChan: make(chan *rpr.Request[DBRequest], 100),
 	}
 }
 
@@ -34,7 +34,7 @@ func (g *Guardian) Start(ctx context.Context, isStarted chan bool) {
 	isStarted <- true
 
 	for req := range g.requestChan {
-		ui.Logf(ui.LevelInfo, "DB-Guardian", "Recieved Request: %v", req)
+		ui.Logf(ui.LevelInfo, "DB-Guardian", "Recieved Request: %v", req.Type)
 		switch req.Type {
 		case DBSaveBlueprint:
 			if getBlueprint, ok := rpr.UnwrapPayload[func() models.BotBlueprint](req.Payload); ok {
@@ -66,6 +66,6 @@ func (g *Guardian) Stop(isStopped chan bool) {
 	isStopped <- true
 }
 
-func (g *Guardian) Submit(t DBRequest, data any, response chan rpr.Response) {
+func (g *Guardian) Submit(t DBRequest, data any, response chan *rpr.Response) {
 	g.requestChan <- rpr.NewRequest[DBRequest](t, data, response)
 }

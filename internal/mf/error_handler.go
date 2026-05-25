@@ -2,10 +2,10 @@ package mf
 
 import (
 	"errors"
-// "github.com/whazzabii7/swarm/internal/db"
-// "github.com/whazzabii7/swarm/internal/bot"
-// "github.com/whazzabii7/swarm/internal/mf/command"
-// "github.com/whazzabii7/swarm/internal/tasker"
+	// "github.com/whazzabii7/swarm/internal/db"
+	// "github.com/whazzabii7/swarm/internal/bot"
+	// "github.com/whazzabii7/swarm/internal/mf/command"
+	// "github.com/whazzabii7/swarm/internal/tasker"
 )
 
 type ErrorSeverity int
@@ -27,7 +27,7 @@ type ErrorHandler struct{}
 
 func (e *ErrorHandler) Analyze(err error) ErrorPolicy {
 	var svrt ErrorSeverity
-	switch  {
+	switch {
 	case errors.Is(err, ErrExecFailed):
 		svrt = SeverityReport
 	default:
