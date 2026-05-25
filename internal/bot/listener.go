@@ -2,16 +2,18 @@ package bot
 
 import (
 	"context"
+
+	"github.com/whazzabii7/swarm/internal/rpr"
 )
 
 type BotMessage struct{}
 
 type BotListener struct {
 	botMessageChan chan BotMessage
-	listenerChan   chan ListenerMessage
+	listenerChan   chan *rpr.Request[BotRequest]
 }
 
-func NewBotListener(listen chan ListenerMessage) *BotListener {
+func NewBotListener(listen chan *rpr.Request[BotRequest]) *BotListener {
 	return &BotListener{
 		botMessageChan: make(chan BotMessage, 100),
 		listenerChan:   listen,
