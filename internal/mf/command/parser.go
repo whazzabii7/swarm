@@ -16,7 +16,6 @@ type Parser struct {
 
 func NewParser() *Parser {
 	return &Parser{
-		// requestChan: requests,
 		CommandChan: make(chan Command, 100),
 	}
 }
