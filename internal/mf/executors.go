@@ -27,11 +27,15 @@ func (m *Mainframe) execSpawnBot(cmd command.Command) {
 			if getBlueprint, ok = rpr.UnwrapPayload[func() models.BotBlueprint](response.Payload); ok {
 				m.blueprints[arg.Data[0]] = getBlueprint()
 			}
+			response.Release()
 		}
 		go m.manager.Submit(bot.BRStartBot, getBlueprint, responseCh)
 		if response, ok := rpr.CheckResponse(responseCh); !ok {
 			err := fmt.Errorf("%w: %v", ErrExecFailed, response.Err)
 			rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
+			response.Release()
+		} else {
+			response.Release()
 		}
 	}
 }
@@ -61,24 +65,29 @@ func (m *Mainframe) scanBotDir(path string) {
 	go func() {
 		var blueprintsResponse *rpr.Response
 		var ok bool
+		var getBlueprints func() []models.BotBlueprint
 		if blueprintsResponse, ok = rpr.CheckResponse(response); !ok {
-			err := fmt.Errorf("%w: %v", ErrExecFailed, blueprintsResponse.Err)
+			err := fmt.Errorf("%w: %w", ErrExecFailed, blueprintsResponse.Err)
 			rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
+			blueprintsResponse.Release()
 			return
 		}
-		var getBlueprints func() []models.BotBlueprint
 		if getBlueprints, ok = rpr.UnwrapPayload[func() []models.BotBlueprint](blueprintsResponse.Payload); !ok {
 			err := fmt.Errorf("%w: %w", ErrExecFailed, ErrCorruptedData)
 			rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
+			blueprintsResponse.Release()
 			return
 		}
+		blueprintsResponse.Release()
 		go m.guardian.Submit(db.DBCheckBlueprints, getBlueprints, response)
 		if blueprintsResponse, ok = rpr.CheckResponse(response); !ok {
-			err := fmt.Errorf("%w: %v", ErrExecFailed, blueprintsResponse.Err)
+			err := fmt.Errorf("%w: %w", ErrExecFailed, blueprintsResponse.Err)
 			rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
+			blueprintsResponse.Release()
 			return
 		}
 		m.Submit(rpr.MFUpdateBlueprints, getBlueprints, nil)
+		blueprintsResponse.Release()
 	}()
 }
 

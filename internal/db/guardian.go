@@ -57,6 +57,7 @@ func (g *Guardian) Start(ctx context.Context, isStarted chan bool) {
 		default:
 			ui.Log(ui.LevelInfo, "Guardian", "Unknown request type recieved")
 		}
+		req.Release()
 	}
 }
 

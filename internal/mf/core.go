@@ -119,6 +119,7 @@ func (m *Mainframe) handleRequest(req *rpr.Request[rpr.MFRequest]) {
 			}
 		}
 	}
+	req.Release()
 }
 
 func (m *Mainframe) executeCommand(cmd command.Command) {
@@ -152,6 +153,7 @@ func (m *Mainframe) checkHealth() {}
 
 func (m *Mainframe) shutdown(done chan bool, cancel context.CancelFunc) {
 	cancel()
+	close(m.requestChan)
 	isStopped := make(chan bool)
 	go m.cmder.Stop(isStopped)
 	m.wait(isStopped)
