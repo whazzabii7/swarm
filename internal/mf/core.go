@@ -15,9 +15,11 @@ import (
 	"github.com/whazzabii7/swarm/internal/ui"
 )
 
+type Request = rpr.Request[rpr.MFRequest]
+
 type Mainframe struct {
 	dbpath      string
-	requestChan chan *rpr.Request[rpr.MFRequest]
+	requestChan chan *Request
 
 	// Submodules
 	guardian *db.Guardian
@@ -40,7 +42,7 @@ func NewMainframe() *Mainframe {
 	// initializing request channel and Mainframe "RAM"
 	// base initialization needed for submodules
 	m := Mainframe{
-		requestChan: make(chan *rpr.Request[rpr.MFRequest], 100),
+		requestChan: make(chan *Request, 100),
 		dbpath:      "./data/swarm.db",
 		blueprints:  make(map[string]models.BotBlueprint),
 		instances:   make(map[int]models.BotInstance),
@@ -76,11 +78,10 @@ func (m *Mainframe) Start(done chan bool) {
 	for {
 		select {
 		case req := <-m.requestChan:
-			go m.handleRequest(req)
+			m.handleRequest(req)
 		case cmd := <-m.cmder.CommandChan:
 			if cmd.Type == command.Quit {
 				m.shutdown(done, cancel)
-				return
 			}
 			go m.executeCommand(cmd)
 		case <-time.After(5 * time.Second):
@@ -99,61 +100,12 @@ func (m *Mainframe) wait(cond chan bool) {
 	}
 }
 
-func (m *Mainframe) handleRequest(req *rpr.Request[rpr.MFRequest]) {
-	switch req.Type {
-	case rpr.MFHandleError:
-		if getErr, ok := rpr.UnwrapPayload[func() error](req.Payload); ok {
-			err := getErr()
-			errPolicy := m.error.Analyze(err)
-			switch errPolicy.Severity {
-			case SeverityFatal:
-				ui.Logf(ui.LevelError, "Mainframe", "%s", errPolicy.Message)
-				m.cmder.EmergencyStop()
-			case SeverityRecover:
-				ui.Logf(ui.LevelError, "Mainframe", "%s", errPolicy.Message)
-				rpr.NewResponseErr(err).Submit(req.Response)
-			case SeverityReport:
-				ui.Logf(ui.LevelError, "Mainframe", "%s", errPolicy.Message)
-			case SeverityIgnore:
-				return
-			}
-		}
-	}
-	req.Release()
+func (m *Mainframe) checkHealth() {
+	ui.Log(ui.LevelWarning, "Mainframe", "Health Check!")
 }
-
-func (m *Mainframe) executeCommand(cmd command.Command) {
-	switch cmd.Type {
-	case command.SpawnBot:
-		m.execSpawnBot(cmd)
-	case command.ListBlueprints:
-		m.execListBlueprints(cmd)
-	case command.ListInstances:
-		m.execListInstances(cmd)
-	case command.ListTasks:
-		m.execListTasks(cmd)
-	case command.StopBot:
-		m.execStopBot(cmd)
-	case command.ScanBotDir:
-		m.execScanBotDir(cmd)
-	case command.LoadTask:
-		m.execLoadTask(cmd)
-	case command.ListenToBot:
-		m.execListenToBot(cmd)
-	case command.ShowOutput:
-		m.execShowOutput(cmd)
-	case command.PrintDBTable:
-		m.execPrintDBTable(cmd)
-	default:
-		m.execPrintHelp(cmd)
-	}
-}
-
-func (m *Mainframe) checkHealth() {}
 
 func (m *Mainframe) shutdown(done chan bool, cancel context.CancelFunc) {
 	cancel()
-	close(m.requestChan)
 	isStopped := make(chan bool)
 	go m.cmder.Stop(isStopped)
 	m.wait(isStopped)
@@ -163,6 +115,7 @@ func (m *Mainframe) shutdown(done chan bool, cancel context.CancelFunc) {
 	m.wait(isStopped)
 	go m.guardian.Stop(isStopped)
 	m.wait(isStopped)
+	close(m.requestChan)
 	done <- true
 }
 

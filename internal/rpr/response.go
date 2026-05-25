@@ -46,7 +46,7 @@ func (r *Response) Release() {
 		return
 	}
 
-	r.Payload = Payload{}
+	r.Payload = Payload{data: nil}
 	r.Err = nil
 
 	responsePool.Put(r)

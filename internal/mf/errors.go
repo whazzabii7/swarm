@@ -5,3 +5,4 @@ import "errors"
 var ErrExecFailed = errors.New("failed to execute")
 var ErrWrongArguments = errors.New("wrong arguments")
 var ErrCorruptedData = errors.New("coruppted data from database")
+var ErrFailedFetchingData = errors.New("failed to fetch data")

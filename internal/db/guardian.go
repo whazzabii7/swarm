@@ -9,6 +9,7 @@ import (
 )
 
 type DBRequest rpr.RequestType
+type Request = rpr.Request[DBRequest]
 
 const (
 	DBSaveBlueprint DBRequest = iota + 100
@@ -20,12 +21,12 @@ const (
 )
 
 type Guardian struct {
-	requestChan chan *rpr.Request[DBRequest]
+	requestChan chan *Request
 }
 
 func NewGuardian() *Guardian {
 	return &Guardian{
-		requestChan: make(chan *rpr.Request[DBRequest], 100),
+		requestChan: make(chan *Request, 100),
 	}
 }
 
@@ -48,14 +49,13 @@ func (g *Guardian) Start(ctx context.Context, isStarted chan bool) {
 			}
 		case DBCheckBlueprints:
 			if getBlueprints, ok := rpr.UnwrapPayload[func() []models.BotBlueprint](req.Payload); ok {
-				g.handleCheckBlueprints(ctx, getBlueprints())
+				blueprints, err := g.handleCheckBlueprints(ctx, getBlueprints())
+				rpr.NewResponse[[]models.BotBlueprint](blueprints, err).Submit(req.Response)
 			}
 		case DBRegisterInstance:
 			if getInstance, ok := rpr.UnwrapPayload[func() models.BotInstance](req.Payload); ok {
 				g.handleRegisterInstance(ctx, getInstance())
 			}
-		default:
-			ui.Log(ui.LevelInfo, "Guardian", "Unknown request type recieved")
 		}
 		req.Release()
 	}

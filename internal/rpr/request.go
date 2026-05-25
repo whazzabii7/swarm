@@ -5,16 +5,6 @@ import "unsafe"
 type RequestType int
 type RequestConstraint interface{ ~int }
 
-type MFRequest RequestType
-type MFSubmit = func(MFRequest, any, chan *Response)
-
-const (
-	MFDataRequest MFRequest = iota
-	MFHandleError
-	MFUpdateBlueprints
-	MFDebug
-)
-
 type rawRequest struct {
 	Type     int
 	Payload  Payload
@@ -44,7 +34,7 @@ func (r *Request[T]) Release() {
 		return
 	}
 
-	r.Payload = Payload{}
+	r.Payload = Payload{data: nil}
 	r.Response = nil
 
 	requestPool.Put((*rawRequest)(unsafe.Pointer(r)))

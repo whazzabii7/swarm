@@ -11,15 +11,46 @@ import (
 	"github.com/whazzabii7/swarm/internal/ui"
 )
 
+func (m *Mainframe) executeCommand(cmd command.Command) {
+	switch cmd.Type {
+	case command.SpawnBot:
+		m.execSpawnBot(cmd)
+	case command.ListBlueprints:
+		m.execListBlueprints(cmd)
+	case command.ListInstances:
+		m.execListInstances(cmd)
+	case command.ListTasks:
+		m.execListTasks(cmd)
+	case command.StopBot:
+		m.execStopBot(cmd)
+	case command.ScanBotDir:
+		m.execScanBotDir(cmd)
+	case command.LoadTask:
+		m.execLoadTask(cmd)
+	case command.ListenToBot:
+		m.execListenToBot(cmd)
+	case command.ShowOutput:
+		m.execShowOutput(cmd)
+	case command.PrintDBTable:
+		m.execPrintDBTable(cmd)
+	default:
+		m.execPrintHelp(cmd)
+	}
+}
+
 func (m *Mainframe) execSpawnBot(cmd command.Command) {
 	responseCh := make(chan *rpr.Response)
 	if arg, ok := cmd.Args[command.FlagAlias]; ok {
 		var getBlueprint func() models.BotBlueprint
-		if data, ok := m.blueprints[arg.Data[0]]; ok {
-			getBlueprint = rpr.PreparePayload(data)
+		var response *rpr.Response
+		rpr.PrepareSubmit2[rpr.MFRequest, rpr.RAMPage, string](m.Submit, rpr.MFDataRequestRAM, rpr.PBlueprint, arg.Data[0], responseCh)
+		if response, ok := rpr.CheckResponse(responseCh); ok {
+			if getBlueprint, ok = rpr.UnwrapPayload[func() models.BotBlueprint](response.Payload); !ok {
+				err := fmt.Errorf("%w: %v", ErrExecFailed, response.Err)
+				rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
+			}
 		} else {
 			rpr.PrepareSubmit[db.DBRequest, string](m.guardian.Submit, db.DBGetBlueprint, arg.Data[0], responseCh)
-			var response *rpr.Response
 			if response, ok = rpr.CheckResponse(responseCh); !ok {
 				err := fmt.Errorf("%w: %v", ErrExecFailed, response.Err)
 				rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
@@ -27,16 +58,14 @@ func (m *Mainframe) execSpawnBot(cmd command.Command) {
 			if getBlueprint, ok = rpr.UnwrapPayload[func() models.BotBlueprint](response.Payload); ok {
 				m.blueprints[arg.Data[0]] = getBlueprint()
 			}
-			response.Release()
 		}
+		response.Release()
 		go m.manager.Submit(bot.BRStartBot, getBlueprint, responseCh)
-		if response, ok := rpr.CheckResponse(responseCh); !ok {
+		if response, ok = rpr.CheckResponse(responseCh); !ok {
 			err := fmt.Errorf("%w: %v", ErrExecFailed, response.Err)
 			rpr.PrepareSubmit[rpr.MFRequest, error](m.Submit, rpr.MFHandleError, err, nil)
-			response.Release()
-		} else {
-			response.Release()
 		}
+		response.Release()
 	}
 }
 

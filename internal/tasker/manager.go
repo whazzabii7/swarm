@@ -6,6 +6,7 @@ import (
 )
 
 type TaskRequest rpr.RequestType
+type Request = rpr.Request[TaskRequest]
 
 const (
 	LoadTask TaskRequest = iota + 300
@@ -13,13 +14,13 @@ const (
 
 type TaskManager struct {
 	mfRequest   rpr.MFSubmit
-	requestChan chan *rpr.Request[TaskRequest]
+	requestChan chan *Request
 }
 
 func NewTaskManager(requests rpr.MFSubmit) *TaskManager {
 	return &TaskManager{
 		mfRequest:   requests,
-		requestChan: make(chan *rpr.Request[TaskRequest], 100),
+		requestChan: make(chan *Request, 100),
 	}
 }
 

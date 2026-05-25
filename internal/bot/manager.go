@@ -9,6 +9,7 @@ import (
 )
 
 type BotRequest rpr.RequestType
+type Request = rpr.Request[BotRequest]
 
 const (
 	BRPingRequest BotRequest = iota + 200
@@ -18,14 +19,14 @@ const (
 )
 
 type BotManager struct {
-	mfRequest    rpr.MFSubmit                  // <-chan, for sending requests to Mainframe
-	requestChan  chan *rpr.Request[BotRequest] // chan<-, for mainfrfame access to requestListener
-	listenerChan chan *rpr.Request[BotRequest] // chan<-, for getting requests
-	botListener  *BotListener                  // listens to requests from Bots
+	mfRequest    rpr.MFSubmit  // <-chan, for sending requests to Mainframe
+	requestChan  chan *Request // chan<-, for mainfrfame access to requestListener
+	listenerChan chan *Request // chan<-, for getting requests
+	botListener  *BotListener  // listens to requests from Bots
 }
 
 func NewManager(requests rpr.MFSubmit) *BotManager {
-	rc := make(chan *rpr.Request[BotRequest], 100)
+	rc := make(chan *Request, 100)
 	return &BotManager{
 		mfRequest:    requests,
 		requestChan:  rc,
@@ -40,7 +41,14 @@ func (b *BotManager) Start(ctx context.Context, isStarted chan bool) {
 	b.wait(isSubStarted)
 	isStarted <- true
 
-	for req := range b.listenerChan {
+	for {
+		req, ok := <-b.listenerChan
+		if !ok {
+			break
+		}
+		if req == nil {
+			continue
+		}
 		switch req.Type {
 		case BRStartBot:
 			if getBlueprint, ok := rpr.UnwrapPayload[func() models.BotBlueprint](req.Payload); ok {

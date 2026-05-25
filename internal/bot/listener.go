@@ -10,10 +10,10 @@ type BotMessage struct{}
 
 type BotListener struct {
 	botMessageChan chan BotMessage
-	listenerChan   chan *rpr.Request[BotRequest]
+	listenerChan   chan *Request
 }
 
-func NewBotListener(listen chan *rpr.Request[BotRequest]) *BotListener {
+func NewBotListener(listen chan *Request) *BotListener {
 	return &BotListener{
 		botMessageChan: make(chan BotMessage, 100),
 		listenerChan:   listen,
