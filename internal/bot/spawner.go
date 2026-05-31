@@ -16,24 +16,24 @@ func (m *BotManager) startBot(ctx context.Context, bp models.BotBlueprint) (*mod
 
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrCreateStderrFailed, err)
+		return nil, fmt.Errorf("%w: %v", ErrFailCreateStderr, err)
 	}
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrCreateStdoutFailed, err)
+		return nil, fmt.Errorf("%w: %v", ErrFailCreateStdout, err)
 	}
 
 	stdinPipe, err := cmd.StdinPipe()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrCreateStdinFailed, err)
+		return nil, fmt.Errorf("%w: %v", ErrFailCreateStdin, err)
 	}
 	_ = stdinPipe
 
 	// --------------------------------------------
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("%w %s: %v", ErrStartBotFailed, bp.Alias, err)
+		return nil, fmt.Errorf("%w %s: %v", ErrFailStartBot, bp.Alias, err)
 	}
 
 	instance := models.BotInstance{
