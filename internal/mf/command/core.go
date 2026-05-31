@@ -16,6 +16,25 @@ var (
 	FlagDefault = Flag{"--default", "-d"}
 )
 
+var cmdFlags map[CommandType]map[Flag]int
+
+func init() {
+	cmdFlags = map[CommandType]map[Flag]int{
+		ListBlueprints: {FlagVerbose: 0},
+		ListInstances:  {FlagVerbose: 0},
+		ListTasks:      {FlagVerbose: 0},
+		ListenToBot:    {FlagVerbose: 0},
+		LoadTask:       {},
+		PrintDBTable:   {FlagVerbose: 0},
+		ScanBotDir:     {FlagPath: 1, FlagDefault: 0},
+		ShowOutput:     {FlagVerbose: 0},
+		SpawnBot:       {FlagAlias: 1},
+		StopBot:        {FlagPID: 1},
+		Quit:           {},
+		PrintHelp:      {FlagVerbose: 1},
+	}
+}
+
 type Arg struct {
 	Data  []string `json:"data"`
 	IsSet bool     `json:"is_set"`
@@ -34,7 +53,6 @@ func collectArgs(argStrings []string) (CommandType, map[Flag]Arg) {
 	}
 
 	cmdType := StringToCommandType(argStrings[0])
-
 	if len(argStrings) == 1 {
 		return cmdType, nil
 	}
@@ -49,10 +67,10 @@ func collectArgs(argStrings []string) (CommandType, map[Flag]Arg) {
 			if isInvalid {
 				return PrintHelp, nil
 			}
+
 			argsMap[flagKey] = *arg
 			buffer = buffer[:0]
 		}
-
 		buffer = append(buffer, current)
 	}
 
@@ -71,36 +89,25 @@ func validateArg(t CommandType, buffer []string) (Flag, *Arg, bool) {
 	userInput := buffer[0]
 	data := buffer[1:]
 
-	cmdFlags := map[CommandType]map[Flag]int{
-		ListBlueprints: {FlagVerbose: 0},
-		ListInstances:  {FlagVerbose: 0},
-		ListTasks:      {FlagVerbose: 0},
-		ListenToBot:    {FlagVerbose: 0},
-		LoadTask:       {},
-		PrintDBTable:   {FlagVerbose: 0},
-		ScanBotDir:     {FlagPath: 1, FlagDefault: 0},
-		ShowOutput:     {FlagVerbose: 0},
-		SpawnBot:       {FlagAlias: 1},
-		StopBot:        {FlagPID: 1},
-		Quit:           {},
-		PrintHelp:      {FlagVerbose: 1},
+	allowedFlags, ok := cmdFlags[t]
+	if !ok {
+		return Flag{}, NewArg([]string{fmt.Sprintf("Flag %s for Command %s not found!", userInput, t.String())}, false), true
 	}
 
-	if allowedFlags, ok := cmdFlags[t]; ok {
-		for flagKey, paramLen := range allowedFlags {
-			if (flagKey[0] != "" && flagKey[0] == userInput) || (flagKey[1] != "" && flagKey[1] == userInput) {
-
-				if len(data) > paramLen {
-					return Flag{}, NewArg([]string{fmt.Sprintf("Too many Arguments for %s %s", t.String(), userInput)}, false), true
-				}
-
-				if paramLen == 0 {
-					return flagKey, NewArg([]string{}, true), false
-				}
-
-				return flagKey, NewArg(data, false), false
-			}
+	for flagKey, paramLen := range allowedFlags {
+		if flagKey[0] != userInput && flagKey[1] != userInput {
+			continue
 		}
+
+		if len(data) > paramLen {
+			return Flag{}, NewArg([]string{fmt.Sprintf("Too many Arguments for %s %s", t.String(), userInput)}, false), true
+		}
+
+		if paramLen == 0 {
+			return flagKey, NewArg([]string{}, true), false
+		}
+
+		return flagKey, NewArg(data, false), false
 	}
 
 	return Flag{}, NewArg([]string{fmt.Sprintf("Flag %s for Command %s not found!", userInput, t.String())}, false), true
