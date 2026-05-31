@@ -4,27 +4,28 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/whazzabii7/rpr"
 	"github.com/whazzabii7/swarm/internal/models"
-	"github.com/whazzabii7/swarm/internal/rpr"
 	"github.com/whazzabii7/swarm/internal/ui"
 )
 
 func (m *Mainframe) handleRequest(req *Request) {
 	switch req.Type {
-	case rpr.MFDataRequestRAM:
+	case models.MFDataRequestRAM:
 		m.handleDataRequestRAM(req)
-	case rpr.MFHandleError:
+	case models.MFHandleError:
+		m.handleError(req)
 	}
 }
 
-func (m *Mainframe) handlerError(req *Request) {
-	var getErr func() error
-	var ok bool
-	if getErr, ok = rpr.UnwrapPayload[func() error](req.Payload); !ok {
-		req.Release()
+func (m *Mainframe) handleError(req *Request) {
+	defer req.Release() // Sofortige Absicherung
+
+	var err error
+	if ok := rpr.Assign(req.Payload.Get1(), &err); !ok {
 		return
 	}
-	err := getErr()
+
 	errPolicy := m.error.Analyze(err)
 	switch errPolicy.Severity {
 	case SeverityFatal:
@@ -37,58 +38,115 @@ func (m *Mainframe) handlerError(req *Request) {
 		ui.Logf(ui.LevelError, "Mainframe", "%s", errPolicy.Message)
 	case SeverityIgnore:
 	}
-	req.Release()
 }
 
 func (m *Mainframe) handleDataRequestRAM(req *Request) {
-	var getArgs func() (rpr.RAMPage, string, bool)
-	var ok bool
-	if getArgs, ok = rpr.UnwrapPayload[func() (rpr.RAMPage, string, bool)](req.Payload); !ok {
-		req.Release()
+	defer req.Release()
+
+	var page models.RAMPage
+	var key string
+	var wantDBFallback bool
+
+	pay1, pay2, pay3 := req.Payload.Get3()
+	ok1 := rpr.Assign(pay1, &page)
+	ok2 := rpr.Assign(pay2, &key)
+	ok3 := rpr.Assign(pay3, &wantDBFallback)
+
+	if !ok1 || !ok2 || !ok3 {
+		err := fmt.Errorf("%w: %w", ErrFailedFetchingData, rpr.ErrUnpackPayloadFail)
+		rpr.NewResponseErr(err).Submit(req.Response)
 		return
-	} 
-	page, key, wantDBFallback  := getArgs()
-	switch page {
-	case rpr.PBlueprint:
-		if blueprint, exists := m.blueprints[key]; exists {
-			rpr.NewResponse[models.BotBlueprint](blueprint, nil).Submit(req.Response)
-			req.Release()
-			return
-		} else if wantDBFallback {
-			var getBlueprint func() models.BotBlueprint
-			var response *rpr.Response
-			responseCh := make(chan *rpr.Response)
-			rpr.PrepareSubmit2[rpr.MFRequest, rpr.RAMPage, string](m.Submit, rpr.MFDataRequestDB, page, key, responseCh)
-			if response, ok = rpr.CheckResponse(responseCh); !ok {
-				err := fmt.Errorf("%w: %w", ErrFailedFetchingData, rpr.ErrNotAResponse)
-				rpr.NewResponseErr(err).Submit(req.Response)
-			} 
-			if getBlueprint, ok = rpr.UnwrapPayload[func() models.BotBlueprint](response.Payload); !ok {
-				var err error
-				if response.Err != nil {
-					err = fmt.Errorf("%w: %w", ErrFailedFetchingData, response.Err)
-				} else {
-					err = fmt.Errorf("%w: data is corrupted!", ErrFailedFetchingData)
-				}
-				rpr.NewResponseErr(err).Submit(req.Response)
-			}
-			rpr.NewResponse[models.BotBlueprint](getBlueprint(), nil).Submit(req.Response)
-		}
-	case rpr.PInstance:
-		id, err := strconv.Atoi(key)
-		if err != nil {
-			return
-		}
-		if instance, exists := m.instances[id]; exists {
-			rpr.NewResponse[models.BotInstance](instance, err).Submit(req.Response)
-			req.Release()
-			return
-		} else if wantDBFallback {
-			rpr.PrepareSubmit2[rpr.MFRequest, rpr.RAMPage, string](m.Submit, rpr.MFDataRequestDB, page, key, req.Response)
-		}
-	case rpr.PTask:
-		// not implemented yet
 	}
 
-	req.Release()
+	switch page {
+	case models.PBlueprint:
+		m.serveRAMBlueprint(req, key, wantDBFallback)
+	case models.PInstance:
+		m.serveRAMInstance(req, key, wantDBFallback)
+	case models.PTask:
+		// not implemented yet
+		rpr.NewResponse(nil, nil).Submit(req.Response)
+	default:
+		rpr.NewResponse(nil, nil).Submit(req.Response)
+	}
+}
+
+func (m *Mainframe) serveRAMBlueprint(req *Request, key string, wantDBFallback bool) {
+	if blueprint, exists := m.blueprints[key]; exists {
+		rpr.NewResponse(rpr.Pack(&blueprint), nil).Submit(req.Response)
+		return
+	}
+
+	if !wantDBFallback {
+		rpr.NewResponse(nil, nil).Submit(req.Response)
+		return
+	}
+
+	var blueprint models.BotBlueprint
+	page := models.PBlueprint
+	responseCh := make(chan *rpr.Response)
+
+	m.Submit(models.MFDataRequestDB, rpr.Pack2(&page, &key), responseCh)
+	resDB, ok := rpr.CheckResponse(responseCh)
+
+	if resDB != nil {
+		defer resDB.Release()
+	}
+
+	if !ok || resDB == nil {
+		err := fmt.Errorf("%w: %w", ErrFailedFetchingData, rpr.ErrNotAResponse)
+		rpr.NewResponseErr(err).Submit(req.Response)
+		return
+	}
+
+	if unpackOk := rpr.Assign(resDB.Payload.Get1(), &blueprint); !unpackOk {
+		err := fmt.Errorf("%w: %w", ErrFailedFetchingData, resDB.Err)
+		if resDB.Err == nil {
+			err = fmt.Errorf("%w: data is corrupted!", ErrFailedFetchingData)
+		}
+		rpr.NewResponseErr(err).Submit(req.Response)
+		return
+	}
+
+	rpr.NewResponse(rpr.Pack(&blueprint), nil).Submit(req.Response)
+}
+
+func (m *Mainframe) serveRAMInstance(req *Request, key string, wantDBFallback bool) {
+	id, err := strconv.Atoi(key)
+	if err != nil {
+		rpr.NewResponseErr(fmt.Errorf("%w: %w", ErrFailedFetchingData, err)).Submit(req.Response)
+		return
+	}
+
+	if instance, exists := m.instances[id]; exists {
+		rpr.NewResponse(rpr.Pack(&instance), err).Submit(req.Response)
+		return
+	}
+
+	if !wantDBFallback {
+		rpr.NewResponse(nil, nil).Submit(req.Response)
+		return
+	}
+
+	// Async DB Fetch
+	page := models.PInstance
+	responseCh := make(chan *rpr.Response)
+	m.Submit(models.MFDataRequestDB, rpr.Pack2(&page, &key), responseCh)
+
+	go func() {
+		var instance models.BotInstance
+		resDB, ok := rpr.CheckResponse(responseCh)
+		if resDB != nil {
+			defer resDB.Release()
+		}
+
+		if !ok {
+			err := fmt.Errorf("%w: %w", ErrFailedFetchingData, resDB.Err)
+			rpr.NewResponseErr(err).Submit(req.Response)
+			return
+		}
+
+		rpr.Assign(req.Payload.Get1(), &instance)
+		rpr.NewResponse(rpr.Pack(&instance), nil).Submit(req.Response)
+	}()
 }

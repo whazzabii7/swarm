@@ -1,8 +1,11 @@
-package rpr
+package models
 
-type MFSubmit = func(MFRequest, any, chan *Response)
+import "github.com/whazzabii7/rpr"
 
-type MFRequest RequestType
+type MFSubmit = func(MFRequest, rpr.Payload, chan *rpr.Response)
+
+type MFRequest rpr.RequestType
+
 const (
 	MFDataRequestRAM MFRequest = iota
 	MFDataRequestDB
@@ -12,6 +15,7 @@ const (
 )
 
 type RAMPage int
+
 const (
 	PBlueprint RAMPage = iota
 	PInstance

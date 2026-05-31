@@ -6,16 +6,16 @@ import (
 	"time"
 	// "encoding/json"
 
+	"github.com/whazzabii7/rpr"
 	"github.com/whazzabii7/swarm/internal/bot"
 	"github.com/whazzabii7/swarm/internal/db"
 	"github.com/whazzabii7/swarm/internal/mf/command"
 	"github.com/whazzabii7/swarm/internal/models"
-	"github.com/whazzabii7/swarm/internal/rpr"
 	"github.com/whazzabii7/swarm/internal/tasker"
 	"github.com/whazzabii7/swarm/internal/ui"
 )
 
-type Request = rpr.Request[rpr.MFRequest]
+type Request = rpr.Request[models.MFRequest]
 
 type Mainframe struct {
 	dbpath      string
@@ -42,7 +42,7 @@ func NewMainframe() *Mainframe {
 	// initializing request channel and Mainframe "RAM"
 	// base initialization needed for submodules
 	m := Mainframe{
-		requestChan: make(chan *Request, 100),
+		requestChan: rpr.MakeRequestChan[models.MFRequest](100),
 		dbpath:      "./data/swarm.db",
 		blueprints:  make(map[string]models.BotBlueprint),
 		instances:   make(map[int]models.BotInstance),
@@ -73,25 +73,32 @@ func (m *Mainframe) Start(done chan bool) {
 
 	go m.cmder.RunShell()
 
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
 	// main loop
 	ui.Log(ui.LevelInfo, "Mainframe", "[!] running. Waiting for instructions...")
 	for {
 		select {
-		case req := <-m.requestChan:
+		case req, ok := <-m.requestChan:
+			if !ok {
+				return
+			}
 			m.handleRequest(req)
 		case cmd := <-m.cmder.CommandChan:
 			if cmd.Type == command.Quit {
 				m.shutdown(done, cancel)
+				continue
 			}
 			go m.executeCommand(cmd)
-		case <-time.After(5 * time.Second):
+		case <-ticker.C:
 			go m.checkHealth()
 		}
 	}
 }
 
-func (m *Mainframe) Submit(t rpr.MFRequest, data any, response chan *rpr.Response) {
-	m.requestChan <- rpr.NewRequest[rpr.MFRequest](t, data, response)
+func (m *Mainframe) Submit(t models.MFRequest, data rpr.Payload, response chan *rpr.Response) {
+	rpr.NewRequest[models.MFRequest](t, data, response).Submit(m.requestChan)
 }
 
 func (m *Mainframe) wait(cond chan bool) {
@@ -101,7 +108,7 @@ func (m *Mainframe) wait(cond chan bool) {
 }
 
 func (m *Mainframe) checkHealth() {
-	ui.Log(ui.LevelWarning, "Mainframe", "Health Check!")
+	// ui.Log(ui.LevelWarning, "Mainframe", "Health Check!")
 }
 
 func (m *Mainframe) shutdown(done chan bool, cancel context.CancelFunc) {

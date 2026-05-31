@@ -3,8 +3,8 @@ package db
 import (
 	"context"
 
+	"github.com/whazzabii7/rpr"
 	"github.com/whazzabii7/swarm/internal/models"
-	"github.com/whazzabii7/swarm/internal/rpr"
 	"github.com/whazzabii7/swarm/internal/ui"
 )
 
@@ -26,7 +26,7 @@ type Guardian struct {
 
 func NewGuardian() *Guardian {
 	return &Guardian{
-		requestChan: make(chan *Request, 100),
+		requestChan: rpr.MakeRequestChan[DBRequest](100),
 	}
 }
 
@@ -35,29 +35,41 @@ func (g *Guardian) Start(ctx context.Context, isStarted chan bool) {
 	isStarted <- true
 
 	for req := range g.requestChan {
-		ui.Logf(ui.LevelInfo, "DB-Guardian", "Recieved Request: %v", req.Type)
-		switch req.Type {
-		case DBSaveBlueprint:
-			if getBlueprint, ok := rpr.UnwrapPayload[func() models.BotBlueprint](req.Payload); ok {
-				err := g.processSaveBlueprint(ctx, getBlueprint())
-				rpr.NewResponseErr(err).Submit(req.Response)
-			}
-		case DBGetBlueprint:
-			if getBlueprintAlias, ok := rpr.UnwrapPayload[func() string](req.Payload); ok {
-				blueprint, err := g.handleGetBlueprint(ctx, getBlueprintAlias())
-				rpr.NewResponse[models.BotBlueprint](*blueprint, err).Submit(req.Response)
-			}
-		case DBCheckBlueprints:
-			if getBlueprints, ok := rpr.UnwrapPayload[func() []models.BotBlueprint](req.Payload); ok {
-				blueprints, err := g.handleCheckBlueprints(ctx, getBlueprints())
-				rpr.NewResponse[[]models.BotBlueprint](blueprints, err).Submit(req.Response)
-			}
-		case DBRegisterInstance:
-			if getInstance, ok := rpr.UnwrapPayload[func() models.BotInstance](req.Payload); ok {
-				g.handleRegisterInstance(ctx, getInstance())
-			}
+		g.routeRequest(ctx, req)
+	}
+}
+
+func (g *Guardian) routeRequest(ctx context.Context, req *Request) {
+	defer req.Release()
+	ui.Logf(ui.LevelInfo, "DB-Guardian", "Recieved Request: %v", req.Type)
+
+	switch req.Type {
+	case DBSaveBlueprint:
+		var blueprint models.BotBlueprint
+		if ok := rpr.Assign(req.Payload.Get1(), &blueprint); ok {
+			err := g.processSaveBlueprint(ctx, blueprint)
+			rpr.NewResponseErr(err).Submit(req.Response)
 		}
-		req.Release()
+
+	case DBGetBlueprint:
+		var alias string
+		if ok := rpr.Assign(req.Payload.Get1(), &alias); ok {
+			blueprint, err := g.handleGetBlueprint(ctx, alias)
+			rpr.NewResponse(rpr.Pack(blueprint), err).Submit(req.Response)
+		}
+
+	case DBCheckBlueprints:
+		var blueprints []models.BotBlueprint
+		if ok := rpr.Assign(req.Payload.Get1(), &blueprints); ok {
+			res, err := g.handleCheckBlueprints(ctx, blueprints)
+			rpr.NewResponse(rpr.Pack(&res), err).Submit(req.Response)
+		}
+
+	case DBRegisterInstance:
+		var instance models.BotInstance
+		if ok := rpr.Assign(req.Payload.Get1(), &instance); ok {
+			g.handleRegisterInstance(ctx, instance)
+		}
 	}
 }
 
@@ -67,6 +79,6 @@ func (g *Guardian) Stop(isStopped chan bool) {
 	isStopped <- true
 }
 
-func (g *Guardian) Submit(t DBRequest, data any, response chan *rpr.Response) {
-	g.requestChan <- rpr.NewRequest[DBRequest](t, data, response)
+func (g *Guardian) Submit(t DBRequest, data rpr.Payload, response chan *rpr.Response) {
+	rpr.NewRequest[DBRequest](t, data, response).Submit(g.requestChan)
 }

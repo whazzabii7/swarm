@@ -2,9 +2,10 @@ package bot
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/whazzabii7/rpr"
 	"github.com/whazzabii7/swarm/internal/models"
-	"github.com/whazzabii7/swarm/internal/rpr"
 	"github.com/whazzabii7/swarm/internal/ui"
 )
 
@@ -19,14 +20,14 @@ const (
 )
 
 type BotManager struct {
-	mfRequest    rpr.MFSubmit  // <-chan, for sending requests to Mainframe
-	requestChan  chan *Request // chan<-, for mainfrfame access to requestListener
-	listenerChan chan *Request // chan<-, for getting requests
-	botListener  *BotListener  // listens to requests from Bots
+	mfRequest    models.MFSubmit // <-chan, for sending requests to Mainframe
+	requestChan  chan *Request   // chan<-, for mainfrfame access to requestListener
+	listenerChan chan *Request   // chan<-, for getting requests
+	botListener  *BotListener    // listens to requests from Bots
 }
 
-func NewManager(requests rpr.MFSubmit) *BotManager {
-	rc := make(chan *Request, 100)
+func NewManager(requests models.MFSubmit) *BotManager {
+	rc := rpr.MakeRequestChan[BotRequest](100)
 	return &BotManager{
 		mfRequest:    requests,
 		requestChan:  rc,
@@ -49,22 +50,54 @@ func (b *BotManager) Start(ctx context.Context, isStarted chan bool) {
 		if req == nil {
 			continue
 		}
-		switch req.Type {
-		case BRStartBot:
-			if getBlueprint, ok := rpr.UnwrapPayload[func() models.BotBlueprint](req.Payload); ok {
-				instance, err := b.startBot(ctx, getBlueprint())
-				rpr.NewResponse[models.BotInstance](*instance, err).Submit(req.Response)
-			}
-		case BRStopBot:
-		case BRPingRequest:
-		case BRSyncBlueprints:
-			if getFuncArgs, ok := rpr.UnwrapPayload[func() (string, []models.BotBlueprint)](req.Payload); ok {
-				blueprints, err := b.syncBlueprints(getFuncArgs())
-				rpr.NewResponse[[]models.BotBlueprint](blueprints, err).Submit(req.Response)
-			}
-		}
-		req.Release()
+
+		// Auslagerung der Logik schützt vor Deep-Nesting
+		b.routeRequest(ctx, req)
 	}
+}
+
+func (b *BotManager) routeRequest(ctx context.Context, req *Request) {
+	defer req.Release()
+
+	switch req.Type {
+	case BRStartBot:
+		b.handleStartBot(ctx, req)
+	case BRStopBot:
+		// TODO
+	case BRPingRequest:
+		// TODO
+	case BRSyncBlueprints:
+		b.handleSyncBlueprints(req)
+	}
+}
+
+func (b *BotManager) handleStartBot(ctx context.Context, req *Request) {
+	var blueprint models.BotBlueprint
+	if ok := rpr.Assign(req.Payload.Get1(), &blueprint); !ok {
+		err := fmt.Errorf("%w: Problem with Arguments", ErrFailUnpackArgs)
+		rpr.NewResponseErr(err).Submit(req.Response)
+		return
+	}
+
+	instance, err := b.startBot(ctx, blueprint)
+	rpr.NewResponse(rpr.Pack(instance), err).Submit(req.Response)
+}
+
+func (b *BotManager) handleSyncBlueprints(req *Request) {
+	var alias string
+	var blueprints []models.BotBlueprint
+
+	pay1, pay2 := req.Payload.Get2()
+	ok1 := rpr.Assign(pay1, &alias)
+	ok2 := rpr.Assign(pay2, &blueprints)
+	if !ok1 || !ok2 {
+		err := fmt.Errorf("%w: Problem with Arguments", ErrFailUnpackArgs)
+		rpr.NewResponseErr(err).Submit(req.Response)
+		return
+	}
+
+	blueprints, err := b.syncBlueprints(alias, blueprints)
+	rpr.NewResponse(rpr.Pack(&blueprints), err).Submit(req.Response)
 }
 
 func (b *BotManager) wait(cond chan bool) {
@@ -73,8 +106,8 @@ func (b *BotManager) wait(cond chan bool) {
 	}
 }
 
-func (b *BotManager) Submit(t BotRequest, data any, response chan *rpr.Response) {
-	b.requestChan <- rpr.NewRequest[BotRequest](t, data, response)
+func (b *BotManager) Submit(t BotRequest, data rpr.Payload, response chan *rpr.Response) {
+	rpr.NewRequest[BotRequest](t, data, response).Submit(b.requestChan)
 }
 
 func (b *BotManager) Stop(isStopped chan bool) {

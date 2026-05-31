@@ -2,8 +2,6 @@ package bot
 
 import (
 	"context"
-
-	"github.com/whazzabii7/swarm/internal/rpr"
 )
 
 type BotMessage struct{}

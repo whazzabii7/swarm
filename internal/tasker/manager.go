@@ -1,7 +1,8 @@
 package tasker
 
 import (
-	"github.com/whazzabii7/swarm/internal/rpr"
+	"github.com/whazzabii7/rpr"
+	"github.com/whazzabii7/swarm/internal/models"
 	"github.com/whazzabii7/swarm/internal/ui"
 )
 
@@ -13,11 +14,11 @@ const (
 )
 
 type TaskManager struct {
-	mfRequest   rpr.MFSubmit
+	mfRequest   models.MFSubmit
 	requestChan chan *Request
 }
 
-func NewTaskManager(requests rpr.MFSubmit) *TaskManager {
+func NewTaskManager(requests models.MFSubmit) *TaskManager {
 	return &TaskManager{
 		mfRequest:   requests,
 		requestChan: make(chan *Request, 100),
