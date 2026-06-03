@@ -21,11 +21,13 @@ const (
 )
 
 type Guardian struct {
+	mfRequest    models.MFSubmit // <-chan, for sending requests to Mainframe
 	requestChan chan *Request
 }
 
-func NewGuardian() *Guardian {
+func NewGuardian(requests models.MFSubmit) *Guardian {
 	return &Guardian{
+		mfRequest:    requests,
 		requestChan: rpr.MakeRequestChan[DBRequest](100),
 	}
 }
