@@ -4,7 +4,7 @@ go 1.26.3
 
 require (
 	github.com/glebarez/go-sqlite v1.21.2
-	github.com/whazzabii7/rpr v1.0.0
+	github.com/whazzabii7/rpr v1.0.1
 )
 
 require (
